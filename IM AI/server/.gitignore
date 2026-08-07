@@ -1,0 +1,15 @@
+.env
+node_modules/
+data/db.json
+data/sessions.json
+dist/
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.cache/
+.vite/
+tmp/
+temp/
