@@ -1,5 +1,6 @@
 import dns from 'dns';
 import mongoose from 'mongoose';
+import logger from '../lib/logger.js';
 
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
@@ -21,7 +22,7 @@ export async function connectDatabase() {
 
   if (!mongoUri) {
     dbConnectionError = 'MongoDB connection unavailable';
-    console.error('Database error:', dbConnectionError);
+    logger.error('db_connection_error', { message: dbConnectionError });
     return getDbStatus();
   }
 
@@ -33,12 +34,12 @@ export async function connectDatabase() {
   })
     .then(() => {
       dbConnectionError = '';
-      console.log('MongoDB connected');
+      logger.info('db_connected');
       return getDbStatus();
     })
     .catch((error) => {
       dbConnectionError = error?.message || 'MongoDB connection unavailable';
-      console.error('Database error:', dbConnectionError);
+      logger.error('db_connection_error', { message: dbConnectionError });
       connectionPromise = null;
       return getDbStatus();
     });
@@ -59,7 +60,7 @@ export async function requireDatabase(_req, res, next) {
   }
 
   const dbError = dbConnectionError || 'Database connection unavailable';
-  console.error('Database error:', dbError);
+  logger.error('db_connection_error', { message: dbError });
   res.status(503).json({
     success: false,
     message: DATABASE_UNAVAILABLE_MESSAGE
