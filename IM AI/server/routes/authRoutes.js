@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { DATABASE_UNAVAILABLE_MESSAGE, requireDatabase } from '../config/db.js';
 import { requireAuth, safeUser } from '../middleware/auth.js';
+import { makeLimiter } from '../middleware/rateLimit.js';
+import logger from '../lib/logger.js';
 import City, { normalizeCityName } from '../models/City.js';
 import User from '../models/User.js';
 
@@ -236,7 +238,9 @@ router.post('/forgot-password', requireDatabase, async (req, res) => {
 });
 
 /* ── GUEST ── */
-router.post('/guest', async (req, res) => {
+const guestLimiter = makeLimiter({ windowMs: 24 * 60 * 60 * 1000, max: 1, prefix: 'rl:guest:' });
+
+router.post('/guest', guestLimiter, async (req, res) => {
   try {
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ success: false, message: 'Authentication is not configured.' });
@@ -252,9 +256,10 @@ router.post('/guest', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '45m' }
     );
+    logger.info('guest_session_start', { username, ip: req.ip });
     res.json({ success: true, token, username });
   } catch (error) {
-    console.error('[auth/guest]', error?.message || error);
+    logger.error('guest_session_error', { message: error?.message || String(error) });
     res.status(500).json({ success: false, message: 'Failed to start demo. Please try again.' });
   }
 });

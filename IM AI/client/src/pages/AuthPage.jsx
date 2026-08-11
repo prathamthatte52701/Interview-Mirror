@@ -543,6 +543,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
     try {
       const data = await guestLogin();
       setAuthToken(data.token);
+      localStorage.setItem('guest_used', JSON.stringify({ setAt: Date.now() }));
       onAuthSuccess({
         username: data.username,
         isGuest: true,
