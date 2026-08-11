@@ -10,6 +10,8 @@ import User from '../models/User.js';
 
 const router = express.Router();
 
+const FULL_NAME_REGEX = /^[A-Za-z][A-Za-z .'-]*$/;
+
 const ALLOWED_CITIES = new Set([
   'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Ahmedabad',
   'Chennai', 'Kolkata', 'Surat', 'Pune', 'Jaipur',
@@ -88,8 +90,8 @@ async function validateSignup(body) {
 
   if (!fullName) return { message: 'Full name is required.' };
   if (fullName.length < 2) return { message: 'Full name must be at least 2 characters.' };
-  if (fullName.length > 20) return { message: 'Full name can be maximum 20 characters.' };
-  if (!/^[A-Za-z\s]+$/.test(fullName)) return { message: 'Full name can only contain letters and spaces.' };
+  if (fullName.length > 40) return { message: 'Full name can be maximum 40 characters.' };
+  if (!FULL_NAME_REGEX.test(fullName)) return { message: "Full name can only contain letters, spaces, apostrophes, hyphens, and periods, and must start with a letter." };
   if (!username) return { message: 'Username is required.' };
   if (/\s/.test(username)) return { message: 'Username cannot contain spaces.' };
   if (username.length < 3) return { message: 'Username must be at least 3 characters.' };

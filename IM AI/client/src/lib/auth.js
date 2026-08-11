@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'interview_mirror_access_token';
+const FULL_NAME_REGEX = /^[A-Za-z][A-Za-z .'-]*$/;
 
 const RAW_API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 const API_ROOT = RAW_API_BASE.endsWith('/interview')
@@ -146,8 +147,8 @@ export async function signUpUser({ fullName, username, email, password, contactN
 
   if (!cleanFullName) throw new Error('Full name is required.');
   if (cleanFullName.length < 2) throw new Error('Full name must be at least 2 characters.');
-  if (cleanFullName.length > 20) throw new Error('Full name can be maximum 20 characters.');
-  if (!/^[A-Za-z\s]+$/.test(cleanFullName)) throw new Error('Full name can only contain letters and spaces.');
+  if (cleanFullName.length > 40) throw new Error('Full name can be maximum 40 characters.');
+  if (!FULL_NAME_REGEX.test(cleanFullName)) throw new Error("Full name can only contain letters, spaces, apostrophes, hyphens, and periods, and must start with a letter.");
   if (!cleanUsername) throw new Error('Username is required.');
   if (/\s/.test(cleanUsername)) throw new Error('Username cannot contain spaces.');
   if (cleanUsername.length < 3) throw new Error('Username must be at least 3 characters.');

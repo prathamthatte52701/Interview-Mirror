@@ -261,10 +261,10 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
         errors.fullName = 'Full name is required.';
       } else if (cleanFullName.length < 2) {
         errors.fullName = 'Full name must be at least 2 characters.';
-      } else if (cleanFullName.length > 20) {
-        errors.fullName = 'Full name can be maximum 20 characters.';
-      } else if (!/^[A-Za-z\s]+$/.test(cleanFullName)) {
-        errors.fullName = 'Full name can only contain letters and spaces.';
+      } else if (cleanFullName.length > 40) {
+        errors.fullName = 'Full name can be maximum 40 characters.';
+      } else if (!/^[A-Za-z][A-Za-z .'-]*$/.test(cleanFullName)) {
+        errors.fullName = "Full name can only contain letters, spaces, apostrophes, hyphens, and periods, and must start with a letter.";
       }
     }
 
@@ -391,14 +391,14 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
   /* ── field change handlers ── */
 
   function handleFullNameChange(e) {
-    const v = e.target.value.slice(0, 20);
+    const v = e.target.value.slice(0, 40);
     setFullName(v);
-    if (!/^[A-Za-z\s]*$/.test(v)) {
-      setFieldErrors((p) => ({ ...p, fullName: 'Full name can only contain letters and spaces.' }));
+    if (!/^[A-Za-z .'-]*$/.test(v)) {
+      setFieldErrors((p) => ({ ...p, fullName: "Full name can only contain letters, spaces, apostrophes, hyphens, and periods." }));
       return;
     }
-    if (v.length >= 20) {
-      setFieldErrors((p) => ({ ...p, fullName: 'Full name can be maximum 20 characters.' }));
+    if (v.length > 40) {
+      setFieldErrors((p) => ({ ...p, fullName: 'Full name can be maximum 40 characters.' }));
       return;
     }
     clearFieldError('fullName');
@@ -664,7 +664,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
                   placeholder="Your full name"
                   autoComplete="name"
                   error={fieldErrors.fullName}
-                  maxLength={20}
+                  maxLength={40}
                 />
               )}
 
