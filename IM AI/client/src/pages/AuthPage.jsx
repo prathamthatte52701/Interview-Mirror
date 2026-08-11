@@ -34,6 +34,7 @@ import {
   setAuthToken,
   signUpUser
 } from '../lib/auth.js';
+import RecoveryCodeCard from '../components/RecoveryCodeCard.jsx';
 
 const FEATURE_ITEMS = [
   { icon: TrendingUp, label: 'Adaptive Interviews' },
@@ -189,6 +190,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [toastMessage, setToastMessage] = useState('');
+  const [recoveryCodeToShow, setRecoveryCodeToShow] = useState('');
   const [serverDown, setServerDown] = useState(false);
   const [guestBusy, setGuestBusy] = useState(false);
   const [guestError, setGuestError] = useState('');
@@ -339,7 +341,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
 
     try {
       if (isSignup) {
-        await signUpUser({ fullName, username, email, password, contactNumber, city, address, cityOptions });
+        const data = await signUpUser({ fullName, username, email, password, contactNumber, city, address, cityOptions });
         setFullName('');
         setUsername('');
         setEmail('');
@@ -352,10 +354,9 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
         setAddress('');
         setFieldErrors({});
         setMessageType('success');
-        setMessage('Account created successfully. Please log in to continue.');
-        setToastMessage('Account created successfully. Please log in to continue.');
-        await new Promise((r) => window.setTimeout(r, 650));
-        onSwitch('login');
+        setMessage('Account created successfully.');
+        setToastMessage('Account created successfully.');
+        setRecoveryCodeToShow(data.recoveryCode || '');
       } else {
         const user = await loginUser({ username, email, password, rememberMe });
         setToastMessage('Login successful.');
@@ -558,6 +559,11 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
     }
   }
 
+  function handleContinueAfterRecoveryCode() {
+    setRecoveryCodeToShow('');
+    onSwitch('login');
+  }
+
   function goTo(path) {
     if (onNavigate) {
       onNavigate(path);
@@ -636,6 +642,17 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
           </section>
 
           <div className="auth-card-wrap">
+            {recoveryCodeToShow ? (
+              <div className="auth-card">
+                <RecoveryCodeCard
+                  code={recoveryCodeToShow}
+                  title="Save your recovery code"
+                  description="You'll need this to reset your password if you ever forget it. It will not be shown again."
+                  continueLabel="I've saved my code — Continue to login"
+                  onContinue={handleContinueAfterRecoveryCode}
+                />
+              </div>
+            ) : (
             <form className="auth-card" onSubmit={handleSubmit} noValidate>
               <div className="auth-card-header">
                 <h2>{isSignup ? 'Create your account' : 'Welcome back'}</h2>
@@ -889,6 +906,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
                 </button>
               </div>
             </form>
+            )}
           </div>
         </section>
 

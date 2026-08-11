@@ -205,9 +205,10 @@ export async function loginUser({ username, email, password, rememberMe = false 
   return data.user;
 }
 
-export async function forgotPassword({ username, email, newPassword, confirmNewPassword }) {
+export async function forgotPassword({ username, email, recoveryCode, newPassword, confirmNewPassword }) {
   const cleanUsername = normalizeUsername(username);
   const cleanEmail = normalizeEmail(email);
+  const cleanRecoveryCode = String(recoveryCode || '').trim();
 
   if (!cleanUsername) throw new Error('Username is required.');
   if (/\s/.test(cleanUsername)) throw new Error('Username cannot contain spaces.');
@@ -215,6 +216,7 @@ export async function forgotPassword({ username, email, newPassword, confirmNewP
   if (cleanUsername.length > 12) throw new Error('Username can be maximum 12 characters.');
   if (!cleanEmail) throw new Error('Email is required.');
   if (!isValidEmail(cleanEmail)) throw new Error('This is not a valid email.');
+  if (!cleanRecoveryCode) throw new Error('Recovery code is required.');
   if (!newPassword) throw new Error('New password is required.');
   if (/\s/.test(newPassword)) throw new Error('Password cannot contain spaces.');
   if (!confirmNewPassword) throw new Error('Confirm password is required.');
@@ -226,7 +228,7 @@ export async function forgotPassword({ username, email, newPassword, confirmNewP
 
   return authRequest('/forgot-password', {
     method: 'POST',
-    body: JSON.stringify({ username: cleanUsername, email: cleanEmail, newPassword, confirmNewPassword })
+    body: JSON.stringify({ username: cleanUsername, email: cleanEmail, recoveryCode: cleanRecoveryCode, newPassword, confirmNewPassword })
   });
 }
 

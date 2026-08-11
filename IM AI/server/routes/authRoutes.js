@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { DATABASE_UNAVAILABLE_MESSAGE, requireDatabase } from '../config/db.js';
 import { requireAuth, safeUser } from '../middleware/auth.js';
 import { makeLimiter } from '../middleware/rateLimit.js';
+import { generateRawRecoveryCode, formatRecoveryCode, normalizeRecoveryCodeInput } from '../lib/recoveryCode.js';
 import logger from '../lib/logger.js';
 import City, { normalizeCityName } from '../models/City.js';
 import User from '../models/User.js';
@@ -131,6 +132,9 @@ router.post('/signup', requireDatabase, async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(String(req.body.password), 12);
+    const rawRecoveryCode = generateRawRecoveryCode();
+    const recoveryCodeHash = await bcrypt.hash(rawRecoveryCode, 12);
+
     await User.create({
       fullName: validation.fullName,
       username: validation.username,
@@ -139,12 +143,16 @@ router.post('/signup', requireDatabase, async (req, res) => {
       passwordHash,
       contactNumber: validation.contactNumber,
       city: validation.city,
-      address: validation.address
+      address: validation.address,
+      recoveryCodeHash,
+      recoveryCodeCreatedAt: new Date()
     });
 
+    logger.info('signup', { email: validation.email, username: validation.username });
     res.status(201).json({
       success: true,
-      message: 'Account created successfully. Please log in to continue.'
+      message: 'Account created successfully. Save your recovery code, then log in to continue.',
+      recoveryCode: formatRecoveryCode(rawRecoveryCode)
     });
   } catch (error) {
     if (error?.code === 11000) {
@@ -153,7 +161,7 @@ router.post('/signup', requireDatabase, async (req, res) => {
         message: 'An account with this email already exists. Please login.'
       });
     }
-    console.error('[auth/signup]', error?.message || error);
+    logger.error('signup_error', { message: error?.message || String(error) });
     res.status(500).json({ success: false, message: 'Unable to create account. Please try again.' });
   }
 });
@@ -205,10 +213,13 @@ router.post('/login', requireDatabase, async (req, res) => {
 });
 
 /* ── FORGOT PASSWORD ── */
-router.post('/forgot-password', requireDatabase, async (req, res) => {
+const forgotPasswordLimiter = makeLimiter({ windowMs: 60 * 60 * 1000, max: 3, prefix: 'rl:forgot:' });
+
+router.post('/forgot-password', forgotPasswordLimiter, requireDatabase, async (req, res) => {
+  const username = normalizeUsername(req.body.username);
+  const email = normalizeEmail(req.body.email);
   try {
-    const username = normalizeUsername(req.body.username);
-    const email = normalizeEmail(req.body.email);
+    const recoveryCode = normalizeRecoveryCodeInput(req.body.recoveryCode);
     const newPassword = String(req.body.newPassword || '');
     const confirmNewPassword = String(req.body.confirmNewPassword || '');
 
@@ -218,6 +229,7 @@ router.post('/forgot-password', requireDatabase, async (req, res) => {
     if (/\s/.test(username)) return res.status(400).json({ success: false, message: 'Username cannot contain spaces.' });
     if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
     if (!isValidEmail(email)) return res.status(400).json({ success: false, message: 'This is not a valid email.' });
+    if (!recoveryCode) return res.status(400).json({ success: false, message: 'Recovery code is required.' });
     if (!newPassword) return res.status(400).json({ success: false, message: 'New password is required.' });
     if (/\s/.test(newPassword)) return res.status(400).json({ success: false, message: 'Password cannot contain spaces.' });
     if (!confirmNewPassword) return res.status(400).json({ success: false, message: 'Confirm password is required.' });
@@ -230,15 +242,38 @@ router.post('/forgot-password', requireDatabase, async (req, res) => {
     const user = await User.findOne({ email, normalizedUsername: usernameKey(username) });
 
     if (!user) {
+      logger.warn('password_reset', { email, username, success: false, reason: 'no_matching_account' });
       return res.status(404).json({ success: false, message: 'No account found with this username and email.' });
     }
 
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-    await User.updateOne({ _id: user._id }, { passwordHash });
+    if (!user.recoveryCodeHash) {
+      logger.warn('password_reset', { email, username, success: false, reason: 'no_recovery_code_on_file' });
+      return res.status(400).json({ success: false, message: 'No recovery code on file for this account.' });
+    }
 
-    res.json({ success: true, message: 'Password reset successfully. Please log in with your new password.' });
+    const codeMatches = await bcrypt.compare(recoveryCode, user.recoveryCodeHash);
+    if (!codeMatches) {
+      logger.warn('password_reset', { email, username, success: false, reason: 'bad_recovery_code' });
+      return res.status(401).json({ success: false, message: 'Invalid recovery code.' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const newRawCode = generateRawRecoveryCode();
+    const newRecoveryCodeHash = await bcrypt.hash(newRawCode, 12);
+
+    await User.updateOne(
+      { _id: user._id },
+      { passwordHash, recoveryCodeHash: newRecoveryCodeHash, recoveryCodeCreatedAt: new Date() }
+    );
+
+    logger.info('password_reset', { email, username, success: true });
+    res.json({
+      success: true,
+      message: 'Password reset successfully. Save your new recovery code, then log in.',
+      recoveryCode: formatRecoveryCode(newRawCode)
+    });
   } catch (error) {
-    console.error('[auth/forgot-password]', error?.message || error);
+    logger.error('password_reset_error', { email, username, message: error?.message || String(error) });
     res.status(500).json({ success: false, message: 'Unable to reset password. Please try again.' });
   }
 });

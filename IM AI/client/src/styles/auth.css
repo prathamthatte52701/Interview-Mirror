@@ -794,6 +794,48 @@
 
 .auth-switch button:hover { text-decoration: underline; }
 
+/* ─── Recovery code save screen ─── */
+.auth-recovery-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--auth-border);
+  border-radius: 12px;
+  background: var(--auth-surface);
+}
+
+.auth-recovery-code code {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: var(--auth-text);
+}
+
+.auth-recovery-copy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--auth-border);
+  background: transparent;
+  color: var(--auth-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.auth-recovery-copy:hover { border-color: var(--auth-secondary); }
+
+.auth-recovery-warning {
+  font-size: 13px;
+  color: var(--auth-muted);
+  margin-bottom: 20px;
+}
+
 .auth-card-security {
   display: flex;
   justify-content: center;

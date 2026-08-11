@@ -4,6 +4,7 @@ import {
   Check,
   Eye,
   EyeOff,
+  KeyRound,
   Lock,
   Mail,
   Sparkles,
@@ -19,6 +20,7 @@ import {
   normalizeEmail,
   normalizeUsername
 } from '../lib/auth.js';
+import RecoveryCodeCard from '../components/RecoveryCodeCard.jsx';
 
 const PASSWORD_RULES = [
   { key: 'length',    label: '8-64 characters' },
@@ -47,6 +49,7 @@ function PasswordChecklist({ status }) {
 export default function ForgotPasswordPage({ onNavigate }) {
   const [username, setUsername]             = useState('');
   const [email, setEmail]                   = useState('');
+  const [recoveryCode, setRecoveryCode]     = useState('');
   const [newPassword, setNewPassword]       = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew]               = useState(false);
@@ -56,7 +59,7 @@ export default function ForgotPasswordPage({ onNavigate }) {
   const [messageType, setMessageType]       = useState('error');
   const [busy, setBusy]                     = useState(false);
   const [serverDown, setServerDown]         = useState(false);
-  const [toastMessage, setToastMessage]     = useState('');
+  const [newRecoveryCode, setNewRecoveryCode] = useState('');
 
   const passwordStatus = useMemo(() => getPasswordPolicyStatus(newPassword), [newPassword]);
 
@@ -93,6 +96,10 @@ export default function ForgotPasswordPage({ onNavigate }) {
       errors.email = 'Email is required.';
     } else if (!isValidEmail(cleanEmail)) {
       errors.email = 'This is not a valid email.';
+    }
+
+    if (!recoveryCode.trim()) {
+      errors.recoveryCode = 'Recovery code is required.';
     }
 
     if (!newPassword) {
@@ -139,9 +146,8 @@ export default function ForgotPasswordPage({ onNavigate }) {
     setBusy(true);
 
     try {
-      await forgotPassword({ username, email, newPassword, confirmNewPassword: confirmPassword });
-      setToastMessage('Password reset successfully. Please log in.');
-      window.setTimeout(() => goTo('/login'), 1400);
+      const data = await forgotPassword({ username, email, recoveryCode, newPassword, confirmNewPassword: confirmPassword });
+      setNewRecoveryCode(data.recoveryCode || '');
     } catch (err) {
       const msg = err.message || 'Unable to reset password. Please try again.';
       if (isServerDownError(msg)) {
@@ -157,13 +163,6 @@ export default function ForgotPasswordPage({ onNavigate }) {
 
   return (
     <main className="auth-page auth-page-next">
-      {toastMessage && (
-        <div className="auth-toast is-success" role="status" aria-live="polite">
-          <Check size={16} />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-
       {serverDown && (
         <div className="auth-server-down" role="alert">
           <span className="auth-server-down-icon">⚠</span>
@@ -186,11 +185,22 @@ export default function ForgotPasswordPage({ onNavigate }) {
 
         <section className="auth-shell auth-shell--centered">
           <div className="auth-card-wrap auth-card-wrap--solo">
+            {newRecoveryCode ? (
+              <div className="auth-card">
+                <RecoveryCodeCard
+                  code={newRecoveryCode}
+                  title="Save your new recovery code"
+                  description="Your old recovery code is no longer valid. You'll need this new one next time you reset your password."
+                  continueLabel="I've saved my code — Continue to login"
+                  onContinue={() => goTo('/login')}
+                />
+              </div>
+            ) : (
             <form className="auth-card" onSubmit={handleSubmit} noValidate>
               <div className="auth-card-header">
                 <span className="auth-card-kicker">Account Recovery</span>
                 <h2>Reset your password</h2>
-                <p>Enter your username, email and choose a new password below.</p>
+                <p>Enter your username, email, and recovery code, then choose a new password.</p>
               </div>
 
               {message && (
@@ -234,6 +244,24 @@ export default function ForgotPasswordPage({ onNavigate }) {
                   />
                 </div>
                 {fieldErrors.email && <p className="auth-field-error">{fieldErrors.email}</p>}
+              </div>
+
+              {/* Recovery code */}
+              <div className="auth-field">
+                <label htmlFor="fpRecoveryCode">Recovery code</label>
+                <div className={`auth-input-shell ${fieldErrors.recoveryCode ? 'has-error' : ''}`}>
+                  <KeyRound size={18} />
+                  <input
+                    id="fpRecoveryCode"
+                    type="text"
+                    value={recoveryCode}
+                    onChange={(e) => { setRecoveryCode(e.target.value); clearFieldError('recoveryCode'); }}
+                    placeholder="XXXX-XXXX-XX"
+                    autoComplete="off"
+                    aria-invalid={fieldErrors.recoveryCode ? 'true' : 'false'}
+                  />
+                </div>
+                {fieldErrors.recoveryCode && <p className="auth-field-error">{fieldErrors.recoveryCode}</p>}
               </div>
 
               {/* New Password */}
@@ -310,6 +338,7 @@ export default function ForgotPasswordPage({ onNavigate }) {
                 <span>Password is hashed and stored securely.</span>
               </div>
             </form>
+            )}
           </div>
         </section>
 
