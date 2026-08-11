@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AuthPage from './pages/AuthPage.jsx';
+import AdminLoginPage from './pages/AdminLoginPage.jsx';
+import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import SetupPage from './pages/SetupPage.jsx';
@@ -47,7 +49,8 @@ function normalizeDraftForStart(draft, candidateName, role) {
 }
 
 const AUTH_ROUTES = new Set(['/login', '/signup']);
-const PUBLIC_ROUTES = new Set(['/forgot-password', '/terms', '/privacy', '/contact']);
+const ADMIN_ROUTES = new Set(['/admin/login', '/admin']);
+const PUBLIC_ROUTES = new Set(['/forgot-password', '/terms', '/privacy', '/contact', ...ADMIN_ROUTES]);
 const PROTECTED_ROUTES = new Set([
   '/',
   '/home',
@@ -56,7 +59,8 @@ const PROTECTED_ROUTES = new Set([
   '/interview',
   '/dashboard',
   '/history',
-  '/profile'
+  '/profile',
+  ...ADMIN_ROUTES
 ]);
 
 const PHASE_TO_PATH = {
@@ -426,6 +430,14 @@ export default function App() {
     window.addEventListener('auth:token-expired', onTokenExpired);
     return () => window.removeEventListener('auth:token-expired', onTokenExpired);
   }, []);
+
+  if (routePath === '/admin/login') {
+    return <AdminLoginPage onNavigate={navigate} />;
+  }
+
+  if (routePath === '/admin') {
+    return <AdminDashboardPage onNavigate={navigate} />;
+  }
 
   if (!currentUser) {
     if (!authChecked) {
