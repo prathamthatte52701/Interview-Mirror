@@ -151,6 +151,24 @@ function AuthField({
   );
 }
 
+function PasswordStrengthMeter({ status }) {
+  const metCount = Object.values(status).filter(Boolean).length;
+  const level = metCount >= 5 ? 'strong' : metCount >= 3 ? 'fair' : 'weak';
+  const label = { weak: 'Weak', fair: 'Fair', strong: 'Strong' }[level];
+
+  return (
+    <div className="auth-strength" aria-hidden="true">
+      <div className="auth-strength-track">
+        <div
+          className={`auth-strength-fill is-${level}`}
+          style={{ width: `${(metCount / 5) * 100}%` }}
+        />
+      </div>
+      <span className={`auth-strength-label is-${level}`}>{label}</span>
+    </div>
+  );
+}
+
 function PasswordChecklist({ status }) {
   return (
     <div className="auth-password-rules" aria-label="Password requirements">
@@ -191,6 +209,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
   const [rememberMe, setRememberMe] = useState(true);
   const [toastMessage, setToastMessage] = useState('');
   const [recoveryCodeToShow, setRecoveryCodeToShow] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [serverDown, setServerDown] = useState(false);
   const [guestBusy, setGuestBusy] = useState(false);
   const [guestError, setGuestError] = useState('');
@@ -231,7 +250,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
 
   useEffect(() => {
     if (!toastMessage) return undefined;
-    const id = window.setTimeout(() => setToastMessage(''), 2800);
+    const id = window.setTimeout(() => setToastMessage(''), 4000);
     return () => window.clearTimeout(id);
   }, [toastMessage]);
 
@@ -352,6 +371,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
         setCityInput('');
         setCitySuggestions([]);
         setAddress('');
+        setAgreedToTerms(false);
         setFieldErrors({});
         setMessageType('success');
         setMessage('Account created successfully.');
@@ -733,6 +753,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
                 )}
               />
 
+              {isSignup && password && <PasswordStrengthMeter status={passwordStatus} />}
               {isSignup && <PasswordChecklist status={passwordStatus} />}
 
               {/* Confirm Password — signup only */}
@@ -844,7 +865,25 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
                 </div>
               )}
 
-              <button className="auth-submit" type="submit" disabled={busy}>
+              {isSignup && (
+                <div className="auth-terms-row">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                    />
+                    <span>
+                      I agree to the{' '}
+                      <button type="button" className="auth-inline-link" onClick={() => goTo('/terms')}>Terms</button>
+                      {' '}and{' '}
+                      <button type="button" className="auth-inline-link" onClick={() => goTo('/privacy')}>Privacy Policy</button>
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              <button className="auth-submit" type="submit" disabled={busy || (isSignup && !agreedToTerms)}>
                 {busy ? (
                   <>
                     <span className="spinner" />
