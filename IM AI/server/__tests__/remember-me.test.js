@@ -39,9 +39,18 @@ function loginBody(rememberMe) {
   };
 }
 
+// Each login below is a distinct scenario, not a brute-force attempt — give
+// each its own IP so the (correctly, separately tested) login rate limiter
+// doesn't interfere with these expiry assertions.
+let ipCounter = 0;
+function login(body) {
+  ipCounter += 1;
+  return request(app).post('/api/auth/login').set('X-Forwarded-For', `40.0.0.${ipCounter}`).send(body);
+}
+
 describe('Remember Me login expiry', () => {
   it('issues a ~7d token when rememberMe is true', async () => {
-    const res = await request(app).post('/api/auth/login').send(loginBody(true));
+    const res = await login(loginBody(true));
     expect(res.status).toBe(200);
     const decoded = decodeToken(res.body.token);
     const days = (decoded.exp - decoded.iat) / (60 * 60 * 24);
@@ -50,7 +59,7 @@ describe('Remember Me login expiry', () => {
   });
 
   it('issues a ~1h token when rememberMe is false', async () => {
-    const res = await request(app).post('/api/auth/login').send(loginBody(false));
+    const res = await login(loginBody(false));
     expect(res.status).toBe(200);
     const decoded = decodeToken(res.body.token);
     const hours = (decoded.exp - decoded.iat) / (60 * 60);
@@ -61,7 +70,7 @@ describe('Remember Me login expiry', () => {
   it('issues a ~1h token when rememberMe is omitted', async () => {
     const body = loginBody(undefined);
     delete body.rememberMe;
-    const res = await request(app).post('/api/auth/login').send(body);
+    const res = await login(body);
     expect(res.status).toBe(200);
     const decoded = decodeToken(res.body.token);
     const hours = (decoded.exp - decoded.iat) / (60 * 60);
@@ -69,7 +78,7 @@ describe('Remember Me login expiry', () => {
   });
 
   it.each([['true'], [1], [null]])('treats malformed rememberMe value %j as false without crashing', async (value) => {
-    const res = await request(app).post('/api/auth/login').send(loginBody(value));
+    const res = await login(loginBody(value));
     expect(res.status).toBe(200);
     const decoded = decodeToken(res.body.token);
     const hours = (decoded.exp - decoded.iat) / (60 * 60);
@@ -77,8 +86,8 @@ describe('Remember Me login expiry', () => {
   });
 
   it('rejects an expired 1h token on a protected route', async () => {
-    const login = await request(app).post('/api/auth/login').send(loginBody(false));
-    const decoded = decodeToken(login.body.token);
+    const loginRes = await login(loginBody(false));
+    const decoded = decodeToken(loginRes.body.token);
     expect(decoded.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
     // Sign our own already-expired token with the same secret/payload shape

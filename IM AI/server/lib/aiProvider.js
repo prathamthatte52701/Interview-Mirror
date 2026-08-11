@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import './env.js';
+import logger from './logger.js';
 
 const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
@@ -39,7 +40,7 @@ Return ONLY the question text, nothing else. No quotes, no numbering.`;
     });
     return (response.text || '').trim();
   } catch (err) {
-    console.error('[AI] generateDynamicQuestion failed:', err.message);
+    logger.warn('ai_fallback', { fn: 'generateDynamicQuestion', message: err.message });
     return null;
   }
 }
@@ -107,7 +108,7 @@ Expected points: ${JSON.stringify(rubric?.expectedPoints || [])}`;
       ...result
     };
   } catch (err) {
-    console.error('[AI] generateAnalysisWithAI failed:', err.message);
+    logger.warn('ai_fallback', { fn: 'generateAnalysisWithAI', message: err.message });
     return null;
   }
 }
@@ -132,7 +133,7 @@ Return ONLY the follow-up question. No quotes, no preamble.`;
     });
     return (response.text || '').trim();
   } catch (err) {
-    console.error('[AI] generateFollowUpWithAI failed:', err.message);
+    logger.warn('ai_fallback', { fn: 'generateFollowUpWithAI', message: err.message });
     return null;
   }
 }
@@ -163,7 +164,7 @@ export async function generateSessionSummaryWithAI({ transcript, role, candidate
     const text = response.text || '{}';
     return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
   } catch (err) {
-    console.error('[AI] generateSessionSummaryWithAI failed:', err.message);
+    logger.warn('ai_fallback', { fn: 'generateSessionSummaryWithAI', message: err.message });
     return null;
   }
 }

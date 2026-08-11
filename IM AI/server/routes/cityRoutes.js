@@ -1,5 +1,6 @@
 import express from 'express';
 import { DATABASE_UNAVAILABLE_MESSAGE, ensureDatabase } from '../config/db.js';
+import logger from '../lib/logger.js';
 import City, { normalizeCityName } from '../models/City.js';
 
 const router = express.Router();
@@ -48,7 +49,7 @@ router.get('/', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('[cities]', error?.message || error);
+    logger.error('cities_error', { message: error?.message || String(error) });
     res.status(500).json({
       success: false,
       message: 'Unable to load cities. Please try again later.'

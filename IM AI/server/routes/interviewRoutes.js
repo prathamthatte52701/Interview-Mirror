@@ -6,9 +6,17 @@ import {
 } from '../lib/sessionEngine.js';
 import { questionBank } from '../lib/questionBank.js';
 import { requireAuth } from '../middleware/auth.js';
+import { makeLimiter, userKeyGenerator } from '../middleware/rateLimit.js';
+import logger from '../lib/logger.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+const interviewActionLimiter = makeLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  prefix: 'rl:interviewAction:',
+  keyGenerator: userKeyGenerator
+});
 const CONTEXT_LIMITS = {
   resumeText: 12000,
   jdText: 8000
@@ -25,7 +33,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
   try {
     res.json(await listSessions(req.userId));
   } catch (err) {
-    console.error('[/sessions]', err);
+    logger.error('interview_sessions_error', { message: err.message });
     res.status(500).json({ error: err.message });
   }
 });
@@ -44,7 +52,7 @@ router.get('/question-bank', (req, res) => {
 });
 
 // ── Start Interview ─────────────────────────────────────────────────────────────
-router.post('/start', requireAuth, async (req, res) => {
+router.post('/start', requireAuth, interviewActionLimiter, async (req, res) => {
   const { role, candidateName, interviewMode, difficulty, persona, resumeText, jdText, pressureMode } = req.body;
   if (!String(role || '').trim() || !String(candidateName || '').trim()) {
     return res.status(400).json({ error: 'role and candidateName are required' });
@@ -63,13 +71,13 @@ router.post('/start', requireAuth, async (req, res) => {
     });
     res.status(201).json(result);
   } catch (err) {
-    console.error('[/start]', err);
+    logger.error('interview_start_error', { message: err.message });
     res.status(500).json({ error: err.message });
   }
 });
 
 // ── Submit Answer ───────────────────────────────────────────────────────────────
-router.post('/answer', requireAuth, async (req, res) => {
+router.post('/answer', requireAuth, interviewActionLimiter, async (req, res) => {
   const { sessionId, answer, responseSeconds, presenceSnapshot } = req.body;
   if (!sessionId || !answer) {
     return res.status(400).json({ error: 'sessionId and answer are required' });
@@ -78,13 +86,13 @@ router.post('/answer', requireAuth, async (req, res) => {
     const result = await answerQuestion(sessionId, answer, { responseSeconds, presenceSnapshot, userId: req.userId });
     res.json(result);
   } catch (err) {
-    console.error('[/answer]', err);
+    logger.error('interview_answer_error', { message: err.message });
     res.status(500).json({ error: err.message });
   }
 });
 
 // ── End Interview ───────────────────────────────────────────────────────────────
-router.post('/live-analysis', requireAuth, async (req, res) => {
+router.post('/live-analysis', requireAuth, interviewActionLimiter, async (req, res) => {
   const { sessionId, answer, responseSeconds, presenceSnapshot } = req.body;
   if (!sessionId || !String(answer || '').trim()) {
     return res.status(400).json({ error: 'sessionId and answer are required' });
@@ -97,7 +105,7 @@ router.post('/live-analysis', requireAuth, async (req, res) => {
     });
     res.json(result);
   } catch (err) {
-    console.error('[/live-analysis]', err);
+    logger.error('interview_live_analysis_error', { message: err.message });
     res.status(500).json({ error: 'Unable to analyze answer right now.' });
   }
 });
@@ -109,7 +117,7 @@ router.post('/end', requireAuth, async (req, res) => {
     const summary = await endSession(sessionId, req.userId);
     res.json(summary);
   } catch (err) {
-    console.error('[/end]', err);
+    logger.error('interview_end_error', { message: err.message });
     res.status(500).json({ error: err.message });
   }
 });

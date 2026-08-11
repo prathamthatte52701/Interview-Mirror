@@ -115,7 +115,9 @@ async function validateSignup(body) {
 }
 
 /* ── SIGNUP ── */
-router.post('/signup', requireDatabase, async (req, res) => {
+const signupLimiter = makeLimiter({ windowMs: 60 * 60 * 1000, max: 10, prefix: 'rl:signup:' });
+
+router.post('/signup', signupLimiter, requireDatabase, async (req, res) => {
   try {
     const validation = await validateSignup(req.body);
     if (validation.message) {
@@ -167,7 +169,9 @@ router.post('/signup', requireDatabase, async (req, res) => {
 });
 
 /* ── LOGIN ── */
-router.post('/login', requireDatabase, async (req, res) => {
+const loginLimiter = makeLimiter({ windowMs: 15 * 60 * 1000, max: 5, prefix: 'rl:login:' });
+
+router.post('/login', loginLimiter, requireDatabase, async (req, res) => {
   const username = normalizeUsername(req.body.username);
   const email = normalizeEmail(req.body.email);
   try {
