@@ -357,7 +357,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
         await new Promise((r) => window.setTimeout(r, 650));
         onSwitch('login');
       } else {
-        const user = await loginUser({ username, email, password });
+        const user = await loginUser({ username, email, password, rememberMe });
         setToastMessage('Login successful.');
         await new Promise((r) => window.setTimeout(r, 650));
         onAuthSuccess(user);

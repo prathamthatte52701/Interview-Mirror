@@ -182,7 +182,7 @@ export async function signUpUser({ fullName, username, email, password, contactN
   });
 }
 
-export async function loginUser({ username, email, password }) {
+export async function loginUser({ username, email, password, rememberMe = false }) {
   const cleanUsername = normalizeUsername(username);
   const cleanEmail = normalizeEmail(email);
 
@@ -197,7 +197,7 @@ export async function loginUser({ username, email, password }) {
 
   const data = await authRequest('/login', {
     method: 'POST',
-    body: JSON.stringify({ username: cleanUsername, email: cleanEmail, password })
+    body: JSON.stringify({ username: cleanUsername, email: cleanEmail, password, rememberMe: Boolean(rememberMe) })
   });
 
   setAuthToken(data.token);

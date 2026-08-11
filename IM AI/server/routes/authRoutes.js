@@ -158,10 +158,11 @@ router.post('/signup', requireDatabase, async (req, res) => {
 
 /* ── LOGIN ── */
 router.post('/login', requireDatabase, async (req, res) => {
+  const username = normalizeUsername(req.body.username);
+  const email = normalizeEmail(req.body.email);
   try {
-    const username = normalizeUsername(req.body.username);
-    const email = normalizeEmail(req.body.email);
     const password = String(req.body.password || '');
+    const rememberMe = req.body.rememberMe === true;
 
     if (!username) return res.status(400).json({ success: false, message: 'Username is required.' });
     if (username.length < 3) return res.status(400).json({ success: false, message: 'Username must be at least 3 characters.' });
@@ -177,23 +178,26 @@ router.post('/login', requireDatabase, async (req, res) => {
 
     const user = await User.findOne({ email, normalizedUsername: usernameKey(username) });
     if (!user) {
+      logger.warn('login_attempt', { email, username, success: false, reason: 'no_matching_account' });
       return res.status(401).json({ success: false, message: 'No matching account was found for this username and email.' });
     }
 
     const passwordMatches = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatches) {
+      logger.warn('login_attempt', { email, username, success: false, reason: 'bad_password' });
       return res.status(401).json({ success: false, message: 'Invalid username, email, or password.' });
     }
 
     const token = jwt.sign(
       { userId: String(user._id), username: user.username, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: '1h' }
+      { expiresIn: rememberMe ? '7d' : '1h' }
     );
 
+    logger.info('login_attempt', { email, username, success: true });
     res.json({ success: true, token, user: safeUser(user) });
   } catch (error) {
-    console.error('[auth/login]', error?.message || error);
+    logger.error('login_error', { email, username, message: error?.message || String(error) });
     res.status(500).json({ success: false, message: 'Unable to log in. Please try again.' });
   }
 });
