@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { DATABASE_UNAVAILABLE_MESSAGE, ensureDatabase } from '../config/db.js';
+import logger from '../lib/logger.js';
 import User from '../models/User.js';
 
 export function safeUser(user) {
@@ -13,6 +14,14 @@ export function safeUser(user) {
     address: user.address || '',
     accountType: user.accountType || 'Prototype User',
     createdAt: user.createdAt
+  };
+}
+
+export function adminSafeUser(user) {
+  return {
+    ...safeUser(user),
+    role: user.role,
+    status: user.status
   };
 }
 
@@ -51,10 +60,21 @@ export async function requireAuth(req, res, next) {
     if (!user) {
       return res.status(401).json({ success: false, message: 'Authentication required.' });
     }
+    if (user.status === 'banned') {
+      logger.warn('banned_user_rejected', { userId: String(user._id) });
+      return res.status(403).json({ success: false, message: 'Your account has been suspended.' });
+    }
     req.userId = user._id;
     req.user = user;
     next();
   } catch {
     res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
   }
+}
+
+export function requireAdmin(req, res, next) {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Admin access required.' });
+  }
+  next();
 }
