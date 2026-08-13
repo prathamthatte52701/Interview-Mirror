@@ -34,6 +34,7 @@ const CONTEXT_LIMITS = {
 };
 
 const ACTIVE_SESSION_KEY = 'active_interview_session_id';
+const SESSION_EXPIRY_WARNING_MS = 2 * 60 * 1000;
 
 function trimContext(value = '', limit = 12000) {
   const text = String(value || '').trim();
@@ -548,8 +549,19 @@ export default function App() {
       if (isGuest) setGuestSessionEnded(true);
       handleLogout();
     }, delay);
-    return () => window.clearTimeout(timer);
-  }, [currentUser]);
+
+    const warningDelay = delay - SESSION_EXPIRY_WARNING_MS;
+    const warningTimer = warningDelay > 0
+      ? window.setTimeout(() => {
+        showToast("Your session will expire soon. Finish up, or you can resume after logging back in.", 'warning');
+      }, warningDelay)
+      : null;
+
+    return () => {
+      window.clearTimeout(timer);
+      if (warningTimer) window.clearTimeout(warningTimer);
+    };
+  }, [currentUser, showToast]);
 
   /* ── Auto-logout: 401 from any API call (token rejected by server) ── */
   useEffect(() => {
