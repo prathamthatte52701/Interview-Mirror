@@ -5,6 +5,7 @@ const { Mixed, ObjectId } = mongoose.Schema.Types;
 const interviewSessionSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true, index: true },
   userId: { type: ObjectId, ref: 'User', required: false, default: null, index: true },
+  guestId: { type: String, default: null, index: true },
   role: { type: String, required: true },
   candidateName: { type: String, required: true },
   interviewMode: { type: String, default: 'mixed' },
@@ -26,5 +27,6 @@ const interviewSessionSchema = new mongoose.Schema({
 });
 
 interviewSessionSchema.index({ userId: 1, createdAt: -1 });
+interviewSessionSchema.index({ guestId: 1, createdAt: -1 });
 
 export default mongoose.model('InterviewSession', interviewSessionSchema);

@@ -10,6 +10,12 @@ import {
   generateSessionSummaryWithAI
 } from './aiProvider.js';
 
+function buildScopeFilter({ userId, guestId }) {
+  if (userId) return { userId };
+  if (guestId) return { guestId };
+  return { _id: null }; // no identity at all → match nothing, never fall back to userId:null
+}
+
 // ─── Question Picker ───────────────────────────────────────────────────────────
 function scoreQuestion(q, session) {
   const profileText = `${session.resumeText || ''} ${session.jdText || ''}`.toLowerCase();
@@ -141,6 +147,7 @@ export async function createSession(payload) {
   const session = {
     id: nanoid(10),
     userId: payload.userId,
+    guestId: payload.guestId || null,
     createdAt: new Date().toISOString(),
     role: payload.role,
     candidateName: payload.candidateName,
@@ -194,13 +201,13 @@ function serializeSession(session) {
   };
 }
 
-export async function getSession(sessionId, userId) {
-  const session = await InterviewSession.findOne({ id: sessionId, userId });
+export async function getSession(sessionId, scope) {
+  const session = await InterviewSession.findOne({ id: sessionId, ...buildScopeFilter(scope) });
   return serializeSession(session);
 }
 
 export async function liveAnalyzeAnswer(sessionId, answer, meta = {}) {
-  const session = await getSession(sessionId, meta.userId);
+  const session = await getSession(sessionId, { userId: meta.userId, guestId: meta.guestId });
   if (!session) throw new Error('Session not found');
 
   const questionText = session.currentQuestion;
@@ -243,7 +250,7 @@ export async function liveAnalyzeAnswer(sessionId, answer, meta = {}) {
 
 // ─── Submit Answer ─────────────────────────────────────────────────────────────
 export async function answerQuestion(sessionId, answer, meta = {}) {
-  const sessionDoc = await InterviewSession.findOne({ id: sessionId, userId: meta.userId });
+  const sessionDoc = await InterviewSession.findOne({ id: sessionId, ...buildScopeFilter({ userId: meta.userId, guestId: meta.guestId }) });
   const session = serializeSession(sessionDoc);
   if (!session) throw new Error('Session not found');
 
@@ -354,8 +361,8 @@ export async function answerQuestion(sessionId, answer, meta = {}) {
 }
 
 // ─── End Session ───────────────────────────────────────────────────────────────
-export async function endSession(sessionId, userId) {
-  const sessionDoc = await InterviewSession.findOne({ id: sessionId, userId });
+export async function endSession(sessionId, scope) {
+  const sessionDoc = await InterviewSession.findOne({ id: sessionId, ...buildScopeFilter(scope) });
   const session = serializeSession(sessionDoc);
   if (!session) throw new Error('Session not found');
 
@@ -380,8 +387,8 @@ export async function endSession(sessionId, userId) {
 }
 
 // ─── List Sessions ─────────────────────────────────────────────────────────────
-export async function listSessions(userId) {
-  const sessions = await InterviewSession.find({ userId }).sort({ createdAt: -1 });
+export async function listSessions(scope) {
+  const sessions = await InterviewSession.find(buildScopeFilter(scope)).sort({ createdAt: -1 });
   return sessions.map((session) => {
     const s = serializeSession(session);
     return {

@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { nanoid } from 'nanoid';
 import { DATABASE_UNAVAILABLE_MESSAGE, requireDatabase } from '../config/db.js';
 import { requireAuth, safeUser } from '../middleware/auth.js';
 import { makeLimiter } from '../middleware/rateLimit.js';
@@ -296,12 +297,13 @@ router.post('/guest', guestLimiter, async (req, res) => {
       suffix += chars[Math.floor(Math.random() * chars.length)];
     }
     const username = `guest_${suffix}`;
+    const guestId = nanoid();
     const token = jwt.sign(
-      { username, isGuest: true },
+      { username, isGuest: true, guestId },
       process.env.JWT_SECRET,
       { expiresIn: '45m' }
     );
-    logger.info('guest_session_start', { username, ip: req.ip });
+    logger.info('guest_session_start', { username, guestId, ip: req.ip });
     res.json({ success: true, token, username });
   } catch (error) {
     logger.error('guest_session_error', { message: error?.message || String(error) });

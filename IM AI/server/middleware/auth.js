@@ -42,8 +42,12 @@ export async function requireAuth(req, res, next) {
 
   // Guest bypass — no MongoDB lookup needed
   if (payload.isGuest) {
+    if (!payload.guestId) {
+      return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+    }
     req.user = payload;
     req.userId = null;
+    req.guestId = payload.guestId;
     return next();
   }
 
@@ -66,6 +70,7 @@ export async function requireAuth(req, res, next) {
     }
     req.userId = user._id;
     req.user = user;
+    req.guestId = null;
     next();
   } catch {
     res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });

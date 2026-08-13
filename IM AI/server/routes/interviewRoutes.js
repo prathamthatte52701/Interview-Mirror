@@ -31,7 +31,7 @@ function cleanContext(value = '', limit = 12000) {
 // ── Sessions ────────────────────────────────────────────────────────────────────
 router.get('/sessions', requireAuth, async (req, res) => {
   try {
-    res.json(await listSessions(req.userId));
+    res.json(await listSessions({ userId: req.userId, guestId: req.guestId }));
   } catch (err) {
     logger.error('interview_sessions_error', { message: err.message });
     res.status(500).json({ error: err.message });
@@ -39,7 +39,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
 });
 
 router.get('/sessions/:id', requireAuth, async (req, res) => {
-  const session = await getSession(req.params.id, req.userId);
+  const session = await getSession(req.params.id, { userId: req.userId, guestId: req.guestId });
   if (!session) return res.status(404).json({ error: 'Session not found' });
   res.json(session);
 });
@@ -60,6 +60,7 @@ router.post('/start', requireAuth, interviewActionLimiter, async (req, res) => {
   try {
     const result = await createSession({
       userId: req.userId,
+      guestId: req.guestId,
       role: String(role).trim().toLowerCase().replace(/\s+/g, '-'),
       candidateName: String(candidateName).trim(),
       interviewMode,
@@ -83,7 +84,7 @@ router.post('/answer', requireAuth, interviewActionLimiter, async (req, res) => 
     return res.status(400).json({ error: 'sessionId and answer are required' });
   }
   try {
-    const result = await answerQuestion(sessionId, answer, { responseSeconds, presenceSnapshot, userId: req.userId });
+    const result = await answerQuestion(sessionId, answer, { responseSeconds, presenceSnapshot, userId: req.userId, guestId: req.guestId });
     res.json(result);
   } catch (err) {
     logger.error('interview_answer_error', { message: err.message });
@@ -101,7 +102,8 @@ router.post('/live-analysis', requireAuth, interviewActionLimiter, async (req, r
     const result = await liveAnalyzeAnswer(sessionId, answer, {
       responseSeconds,
       presenceSnapshot,
-      userId: req.userId
+      userId: req.userId,
+      guestId: req.guestId
     });
     res.json(result);
   } catch (err) {
@@ -114,7 +116,7 @@ router.post('/end', requireAuth, async (req, res) => {
   const { sessionId } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
   try {
-    const summary = await endSession(sessionId, req.userId);
+    const summary = await endSession(sessionId, { userId: req.userId, guestId: req.guestId });
     res.json(summary);
   } catch (err) {
     logger.error('interview_end_error', { message: err.message });
