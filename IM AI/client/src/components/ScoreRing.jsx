@@ -1,13 +1,17 @@
+import { useId } from 'react';
+
 export default function ScoreRing({ score = 0, max = 10, size = 90, label = '', strokeWidth = 5 }) {
-  const pct = Math.min(1, Math.max(0, score / max));
+  const safeScore = Number(score) || 0;
+  const pct = Math.min(1, Math.max(0, safeScore / max));
   const r = (size - strokeWidth * 2) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ * (1 - pct);
-  const display = max === 10 ? score.toFixed(1) : `${Math.round(score)}`;
+  const display = max === 10 ? safeScore.toFixed(1) : `${Math.round(safeScore)}`;
 
   const color = pct >= 0.75 ? '#4ade80' : pct >= 0.55 ? '#22d3ee' : pct >= 0.4 ? '#facc15' : '#f87171';
   const glowColor = pct >= 0.75 ? 'rgba(74,222,128,0.35)' : pct >= 0.55 ? 'rgba(34,211,238,0.35)' : pct >= 0.4 ? 'rgba(250,204,21,0.3)' : 'rgba(248,113,113,0.28)';
-  const filterId = `glow-${label.replace(/\s/g,'-').toLowerCase()}`;
+  const reactId = useId();
+  const filterId = `glow-${reactId}`;
 
   return (
     <div className="score-ring-card">
