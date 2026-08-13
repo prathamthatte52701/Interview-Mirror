@@ -2536,6 +2536,54 @@ small { font-size: 0.78rem; color: var(--text-muted); }
   justify-content: flex-end;
 }
 
+.profile-settings-card {
+  border: 1px solid rgba(34,211,238,0.12);
+  background: linear-gradient(160deg, rgba(18,18,22,0.98), rgba(10,10,14,0.99));
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 40px rgba(34,211,238,0.04);
+  border-radius: var(--r-xl);
+  padding: 24px;
+}
+
+.profile-settings-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #ffffff 50%, #94a3b8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.profile-settings-card > p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 5px 0 18px;
+}
+
+.profile-settings-form {
+  display: grid;
+  gap: 14px;
+  max-width: 420px;
+}
+
+.profile-inline-confirm {
+  display: grid;
+  gap: 14px;
+  max-width: 420px;
+}
+
+.profile-danger-card {
+  border-color: rgba(248,113,113,0.22);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 40px rgba(248,113,113,0.05);
+}
+
+.profile-danger-card h3 {
+  background: linear-gradient(135deg, #fca5a5 30%, #f87171);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* ─── Setup Page ─────────────────────────────────────────────── */
 .setup-page {
   max-width: 1240px;

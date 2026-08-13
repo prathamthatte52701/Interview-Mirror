@@ -260,3 +260,44 @@ export async function fetchCurrentUser() {
 export function logoutUser() {
   clearAuthToken();
 }
+
+function authenticatedRequest(path, options = {}) {
+  const token = getAuthToken();
+  return authRequest(path, {
+    ...options,
+    headers: { Authorization: `Bearer ${token}`, ...options.headers }
+  });
+}
+
+export async function changePassword({ currentPassword, newPassword }) {
+  if (!currentPassword) throw new Error('Current password is required.');
+  if (!newPassword) throw new Error('New password is required.');
+  if (/\s/.test(newPassword)) throw new Error('Password cannot contain spaces.');
+  const policyError = getPasswordPolicyError(newPassword);
+  if (policyError) throw new Error(policyError);
+
+  return authenticatedRequest('/password', {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword, newPassword })
+  });
+}
+
+export async function regenerateRecoveryCode(password) {
+  if (!password) throw new Error('Password is required.');
+  return authenticatedRequest('/recovery-code/regenerate', {
+    method: 'POST',
+    body: JSON.stringify({ password })
+  });
+}
+
+export async function deleteAccount(password) {
+  if (!password) throw new Error('Password is required.');
+  return authenticatedRequest('/account', {
+    method: 'DELETE',
+    body: JSON.stringify({ password })
+  });
+}
+
+export async function logoutEverywhere() {
+  return authenticatedRequest('/logout-everywhere', { method: 'POST' });
+}

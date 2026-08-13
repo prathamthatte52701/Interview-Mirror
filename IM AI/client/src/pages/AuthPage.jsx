@@ -14,8 +14,7 @@ import {
   TrendingUp,
   BarChart3,
   UserCheck,
-  User,
-  X
+  User
 } from 'lucide-react';
 import {
   FALLBACK_CITIES,
@@ -35,19 +34,12 @@ import {
   signUpUser
 } from '../lib/auth.js';
 import RecoveryCodeCard from '../components/RecoveryCodeCard.jsx';
+import PasswordChecklist, { PasswordStrengthMeter } from '../components/PasswordChecklist.jsx';
 
 const FEATURE_ITEMS = [
   { icon: TrendingUp, label: 'Adaptive Interviews' },
   { icon: BarChart3, label: 'Detailed Performance Reports' },
   { icon: UserCheck, label: 'Recruiter-level Feedback' }
-];
-
-const PASSWORD_RULES = [
-  { key: 'length', label: '8-64 characters' },
-  { key: 'uppercase', label: '1 uppercase' },
-  { key: 'lowercase', label: '1 lowercase' },
-  { key: 'number', label: '1 number' },
-  { key: 'special', label: '1 special character' }
 ];
 
 const DASH_METRICS = [
@@ -147,40 +139,6 @@ function AuthField({
           {error}
         </p>
       )}
-    </div>
-  );
-}
-
-function PasswordStrengthMeter({ status }) {
-  const metCount = Object.values(status).filter(Boolean).length;
-  const level = metCount >= 5 ? 'strong' : metCount >= 3 ? 'fair' : 'weak';
-  const label = { weak: 'Weak', fair: 'Fair', strong: 'Strong' }[level];
-
-  return (
-    <div className="auth-strength" aria-hidden="true">
-      <div className="auth-strength-track">
-        <div
-          className={`auth-strength-fill is-${level}`}
-          style={{ width: `${(metCount / 5) * 100}%` }}
-        />
-      </div>
-      <span className={`auth-strength-label is-${level}`}>{label}</span>
-    </div>
-  );
-}
-
-function PasswordChecklist({ status }) {
-  return (
-    <div className="auth-password-rules" aria-label="Password requirements">
-      {PASSWORD_RULES.map((rule) => {
-        const passed = status[rule.key];
-        return (
-          <span key={rule.key} className={passed ? 'is-met' : ''}>
-            {passed ? <Check size={13} /> : <X size={13} />}
-            {rule.label}
-          </span>
-        );
-      })}
     </div>
   );
 }
