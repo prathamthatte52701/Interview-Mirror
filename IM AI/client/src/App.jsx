@@ -375,6 +375,10 @@ export default function App() {
     }
   }
 
+  function handleSessionDeleted(id) {
+    setLocalHistory((prev) => prev.filter((item) => item.id !== id));
+  }
+
   function handleRestart() {
     setSession(null);
     setCurrentQ('');
@@ -709,14 +713,17 @@ export default function App() {
               loading={historyLoading}
               onRestart={handleRestart}
               onLogout={handleLogout}
+              onSessionDeleted={handleSessionDeleted}
             />
           )}
 
           {phase === 'history' && (
             <HistoryPage
               history={localHistory}
+              loading={historyLoading}
               onStart={handleRestart}
               onLogout={handleLogout}
+              onSessionDeleted={handleSessionDeleted}
             />
           )}
 
