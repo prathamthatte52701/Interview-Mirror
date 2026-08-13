@@ -110,6 +110,10 @@ function decodeJwt(token) {
   try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; }
 }
 
+function sanitizeFilenamePart(value) {
+  return String(value || '').replace(/[^A-Za-z0-9_-]/g, '_') || 'report';
+}
+
 export default function DashboardPage({ session, summary, history = [], loading = false, onRestart, onLogout }) {
   // Capture isGuest at mount time — before token is cleared — to keep hooks order stable
   const [isGuestSession] = useState(() => {
@@ -120,7 +124,8 @@ export default function DashboardPage({ session, summary, history = [], loading 
   const { showToast } = useToast();
 
   const [exportBusy, setExportBusy] = useState(false);
-  const [selectedHistoryId, setSelectedHistoryId] = useState(history?.[0]?.id || '');
+  const [activeSessionBrowserId, setActiveSessionBrowserId] = useState(history?.[0]?.id || '');
+  const [hasBrowsedSession, setHasBrowsedSession] = useState(false);
   const [openSessionGroups, setOpenSessionGroups] = useState({});
   const sessionGroups = useMemo(() => groupSessions(history), [history]);
 
@@ -142,11 +147,11 @@ export default function DashboardPage({ session, summary, history = [], loading 
 
   useEffect(() => {
     if (!history?.length) {
-      setSelectedHistoryId('');
+      setActiveSessionBrowserId('');
       return;
     }
 
-    setSelectedHistoryId((current) => (
+    setActiveSessionBrowserId((current) => (
       history.some((item) => item.id === current) ? current : history[0].id
     ));
   }, [history]);
@@ -166,10 +171,10 @@ export default function DashboardPage({ session, summary, history = [], loading 
     });
   }, [sessionGroups]);
 
-  const selectedHistoryItem = useMemo(() => {
+  const activeSessionBrowserItem = useMemo(() => {
     if (!history?.length) return null;
-    return history.find((item) => item.id === selectedHistoryId) || history[0];
-  }, [history, selectedHistoryId]);
+    return history.find((item) => item.id === activeSessionBrowserId) || history[0];
+  }, [history, activeSessionBrowserId]);
 
   const metrics = summary?.averageMetrics || {};
   const radarData = Object.entries(metrics)
@@ -189,12 +194,22 @@ export default function DashboardPage({ session, summary, history = [], loading 
   const hiringRec      = summary?.hiringRecommendation || 'N/A';
   const verdict        = summary?.overallVerdict || summary?.recommendation || '';
   const visualSummaryActive = summary?.visualMetricsAvailable === true;
-  const selectedSummary = selectedHistoryItem?.summary || {};
-  const selectedTranscript = selectedHistoryItem?.transcript || [];
+  const selectedSummary = activeSessionBrowserItem?.summary || {};
+  const selectedTranscript = activeSessionBrowserItem?.transcript || [];
 
   async function handleExportPDF() {
     setExportBusy(true);
     try {
+      // Export whichever session the user is currently viewing in the "All
+      // Sessions" browser (if they've clicked one) — not always the page's main session.
+      const exportTarget = hasBrowsedSession && activeSessionBrowserItem ? activeSessionBrowserItem : session;
+      const exportSummary = hasBrowsedSession && activeSessionBrowserItem ? (activeSessionBrowserItem.summary || {}) : summary;
+      const exportMetrics = exportSummary?.averageMetrics || {};
+      const exportStrengths = exportSummary?.strengths || [];
+      const exportWeaknesses = exportSummary?.weaknesses || [];
+      const exportVerdict = exportSummary?.overallVerdict || exportSummary?.recommendation || '';
+      const exportHiringRec = exportSummary?.hiringRecommendation || 'N/A';
+
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -209,11 +224,11 @@ export default function DashboardPage({ session, summary, history = [], loading 
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(150, 150, 150);
-      doc.text(`Candidate: ${session?.candidateName || 'N/A'}`, 20, 40);
-      doc.text(`Role: ${session?.role?.replaceAll('-', ' ') || 'N/A'}`, 20, 47);
-      doc.text(`Difficulty: ${session?.difficulty || 'N/A'}   |   Questions: ${summary?.questionsAnswered || 0}`, 20, 54);
-      doc.text(`Date: ${new Date(session?.createdAt).toLocaleDateString()}`, 20, 61);
-      doc.text(`Hiring Recommendation: ${hiringRec}`, 20, 68);
+      doc.text(`Candidate: ${exportTarget?.candidateName || 'N/A'}`, 20, 40);
+      doc.text(`Role: ${exportTarget?.role?.replaceAll('-', ' ') || 'N/A'}`, 20, 47);
+      doc.text(`Difficulty: ${exportTarget?.difficulty || 'N/A'}   |   Questions: ${exportSummary?.questionsAnswered || 0}`, 20, 54);
+      doc.text(`Date: ${exportTarget?.createdAt ? new Date(exportTarget.createdAt).toLocaleDateString() : 'Date not available'}`, 20, 61);
+      doc.text(`Hiring Recommendation: ${exportHiringRec}`, 20, 68);
 
       let y = 82;
       doc.setTextColor(255, 255, 255);
@@ -224,12 +239,12 @@ export default function DashboardPage({ session, summary, history = [], loading 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(180, 180, 180);
-      Object.entries(metrics).forEach(([k, v]) => {
+      Object.entries(exportMetrics).forEach(([k, v]) => {
         doc.text(`${k}: ${v}/10`, 24, y);
         y += 7;
       });
 
-      if (strengths.length) {
+      if (exportStrengths.length) {
         y += 5;
         doc.setTextColor(255,255,255);
         doc.setFontSize(13);
@@ -239,10 +254,10 @@ export default function DashboardPage({ session, summary, history = [], loading 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(180,180,180);
-        strengths.forEach(s => { doc.text(`• ${s}`, 24, y); y += 7; });
+        exportStrengths.forEach(s => { doc.text(`• ${s}`, 24, y); y += 7; });
       }
 
-      if (weaknesses.length) {
+      if (exportWeaknesses.length) {
         y += 5;
         doc.setTextColor(255,255,255);
         doc.setFontSize(13);
@@ -252,19 +267,21 @@ export default function DashboardPage({ session, summary, history = [], loading 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(180,180,180);
-        weaknesses.forEach(w => { doc.text(`• ${w}`, 24, y); y += 7; });
+        exportWeaknesses.forEach(w => { doc.text(`• ${w}`, 24, y); y += 7; });
       }
 
-      if (verdict) {
+      if (exportVerdict) {
         y += 8;
         doc.setTextColor(255,255,255);
         doc.setFontSize(11);
         doc.setFont('helvetica', 'italic');
-        const lines = doc.splitTextToSize(verdict, 168);
+        const lines = doc.splitTextToSize(exportVerdict, 168);
         lines.forEach(l => { doc.text(l, 20, y); y += 6; });
       }
 
-      doc.save(`InterviewMirrorAI_${session?.candidateName || 'report'}_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
+      const filenameCandidate = sanitizeFilenamePart(exportTarget?.candidateName || 'report');
+      const filenameDate = sanitizeFilenamePart(new Date().toLocaleDateString());
+      doc.save(`InterviewMirrorAI_${filenameCandidate}_${filenameDate}.pdf`);
       showToast('PDF report downloaded.', 'success');
     } catch (err) {
       console.error('PDF export failed:', err);
@@ -526,13 +543,16 @@ export default function DashboardPage({ session, summary, history = [], loading 
                       <div className="session-group-items">
                         {group.items.map((item) => {
                           const score = sessionScore(item);
-                          const active = selectedHistoryItem?.id === item.id;
+                          const active = activeSessionBrowserItem?.id === item.id;
                           return (
                             <button
                               key={item.id}
                               type="button"
                               className={`history-row ${active ? 'active' : ''}`}
-                              onClick={() => setSelectedHistoryId(item.id)}
+                              onClick={() => {
+                                setActiveSessionBrowserId(item.id);
+                                setHasBrowsedSession(true);
+                              }}
                             >
                               <span>
                                 <strong>{sessionTitle(item)}</strong>
@@ -549,23 +569,23 @@ export default function DashboardPage({ session, summary, history = [], loading 
               })}
             </div>
 
-            {selectedHistoryItem && (
+            {activeSessionBrowserItem && (
               <div className="selected-session-card">
                 <div className="selected-session-title-row">
                   <div>
                     <span className="selected-session-eyebrow">Selected session</span>
-                    <h3>{sessionTitle(selectedHistoryItem)}</h3>
+                    <h3>{sessionTitle(activeSessionBrowserItem)}</h3>
                   </div>
                   <div className="history-card-score">
-                    {sessionScore(selectedHistoryItem) ?? '--'}
+                    {sessionScore(activeSessionBrowserItem) ?? '--'}
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>/10</span>
                   </div>
                 </div>
 
                 <div className="session-detail-grid">
-                  <DetailRow label="Interview type" value={formatLabel(selectedHistoryItem.role)} />
-                  <DetailRow label="Persona" value={formatLabel(selectedHistoryItem.persona)} />
-                  <DetailRow label="Date/time" value={formatDateTime(selectedHistoryItem.createdAt)} />
+                  <DetailRow label="Interview type" value={formatLabel(activeSessionBrowserItem.role)} />
+                  <DetailRow label="Persona" value={formatLabel(activeSessionBrowserItem.persona)} />
+                  <DetailRow label="Date/time" value={formatDateTime(activeSessionBrowserItem.createdAt)} />
                   <DetailRow label="Result" value={selectedSummary.hiringRecommendation || 'Not available'} />
                 </div>
 
@@ -582,7 +602,7 @@ export default function DashboardPage({ session, summary, history = [], loading 
                     <div className="accordion">
                       {selectedTranscript.slice(0, 4).map((entry, index) => (
                         <AccordionItem
-                          key={`${selectedHistoryItem.id}-${index}`}
+                          key={`${activeSessionBrowserItem.id}-${index}`}
                           q={entry.question}
                           a={entry.answer}
                           ideal={entry.analysis?.idealAnswer || entry.analysis?.rewrite}
