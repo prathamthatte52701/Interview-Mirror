@@ -2904,6 +2904,18 @@ small { font-size: 0.78rem; color: var(--text-muted); }
   color: var(--warning);
 }
 
+.setup-char-counter {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 0.72rem;
+  color: var(--text-subtle);
+}
+
+.setup-char-counter.warn {
+  color: var(--warning);
+  font-weight: 600;
+}
+
 .setup-field-error {
   color: var(--danger);
   font-size: 0.8rem;

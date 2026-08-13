@@ -101,12 +101,22 @@ const PRESSURE_MODES = [
   { value: 'high-pressure', label: 'High Pressure', desc: 'Intense follow-ups' }
 ];
 
-const PASTED_CONTEXT_PREVIEW_LIMIT = 12000;
+// Must match App.jsx's CONTEXT_LIMITS — passed down as the contextLimits prop.
+const DEFAULT_CONTEXT_LIMITS = { resumeText: 12000, jdText: 8000 };
 
-function normalizePastedContext(value) {
+function normalizePastedContext(value, limit) {
   const text = String(value || '');
-  if (text.length <= PASTED_CONTEXT_PREVIEW_LIMIT) return text;
-  return `${text.slice(0, PASTED_CONTEXT_PREVIEW_LIMIT)}\n\n[Context trimmed to keep interview setup responsive.]`;
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit)}\n\n[Context trimmed to keep interview setup responsive.]`;
+}
+
+function ContextCounter({ length, limit }) {
+  const warn = limit - length <= 200;
+  return (
+    <div className={`setup-char-counter ${warn ? 'warn' : ''}`}>
+      {length.toLocaleString()} / {limit.toLocaleString()}
+    </div>
+  );
 }
 
 const ACCEPTED_RESUME_EXTENSIONS = ['.txt', '.pdf', '.doc', '.docx'];
@@ -156,7 +166,8 @@ export default function SetupPage({
   draft,
   setDraft,
   onStart,
-  busy
+  busy,
+  contextLimits = DEFAULT_CONTEXT_LIMITS
 }) {
   const [uploadingResume, setUploadingResume] = useState(false);
   const [resumeFilename, setResumeFilename] = useState('');
@@ -424,11 +435,12 @@ export default function SetupPage({
                 value={draft.resumeText}
                 onChange={(event) => {
                   if (resumeError) setResumeError('');
-                  patch('resumeText', normalizePastedContext(event.target.value));
+                  patch('resumeText', normalizePastedContext(event.target.value, contextLimits.resumeText));
                 }}
                 placeholder="Paste your resume content here..."
                 rows={4}
               />
+              <ContextCounter length={(draft.resumeText || '').length} limit={contextLimits.resumeText} />
             </details>
 
             <div className="form-field mt-4">
@@ -439,10 +451,11 @@ export default function SetupPage({
                 id="jdText"
                 className="form-textarea"
                 value={draft.jdText}
-                onChange={(event) => patch('jdText', normalizePastedContext(event.target.value))}
+                onChange={(event) => patch('jdText', normalizePastedContext(event.target.value, contextLimits.jdText))}
                 placeholder="Paste the job description..."
                 rows={4}
               />
+              <ContextCounter length={(draft.jdText || '').length} limit={contextLimits.jdText} />
             </div>
           </div>
 

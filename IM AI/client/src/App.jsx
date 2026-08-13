@@ -663,6 +663,7 @@ export default function App() {
               setDraft={setDraft}
               onStart={handleStartSession}
               busy={busy}
+              contextLimits={CONTEXT_LIMITS}
             />
           )}
 
