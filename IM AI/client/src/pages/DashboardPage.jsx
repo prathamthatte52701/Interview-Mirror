@@ -103,7 +103,7 @@ function decodeJwt(token) {
   try { return JSON.parse(atob(token.split('.')[1])); } catch { return null; }
 }
 
-export default function DashboardPage({ session, summary, history, onRestart, onLogout }) {
+export default function DashboardPage({ session, summary, history = [], loading = false, onRestart, onLogout }) {
   // Capture isGuest at mount time — before token is cleared — to keep hooks order stable
   const [isGuestSession] = useState(() => {
     const decoded = decodeJwt(localStorage.getItem('interview_mirror_access_token'));
@@ -284,6 +284,15 @@ export default function DashboardPage({ session, summary, history, onRestart, on
             <button className="btn btn-ghost" onClick={() => onLogout('/login')}>Log In</button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (loading && !summary) {
+    return (
+      <div className="anim-fade-up" style={{ maxWidth: 600, margin: '40px auto', textAlign: 'center' }} aria-live="polite" aria-busy="true">
+        <span className="spinner" style={{ width: 28, height: 28 }} />
+        <p style={{ color: 'var(--text-muted)', marginTop: '14px' }}>Loading your dashboard...</p>
       </div>
     );
   }

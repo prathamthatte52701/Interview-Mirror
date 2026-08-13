@@ -143,6 +143,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [currentQuestion, setCurrentQ] = useState('');
   const [localHistory, setLocalHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -244,11 +245,14 @@ export default function App() {
     let cancelled = false;
 
     async function loadHistory() {
+      setHistoryLoading(true);
       try {
         const history = await loadInterviewHistory();
         if (!cancelled) setLocalHistory(Array.isArray(history) ? history : []);
       } catch (err) {
         if (!cancelled) setError(err.message || 'Failed to load interview history.');
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
       }
     }
 
@@ -687,6 +691,7 @@ export default function App() {
               session={selectedHistoryRecord || session}
               summary={summaryForDashboard}
               history={localHistory}
+              loading={historyLoading}
               onRestart={handleRestart}
               onLogout={handleLogout}
             />
