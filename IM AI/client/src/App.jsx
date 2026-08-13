@@ -12,9 +12,10 @@ import ProfilePage from './pages/ProfilePage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
 import ContactPage from './pages/ContactPage.jsx';
-import { analyzeLiveAnswer, createSession, endSession, fetchSession, submitAnswer } from './services/api.js';
+import { analyzeLiveAnswer, claimSession, createSession, endSession, fetchSession, submitAnswer } from './services/api.js';
 import { clearAuthToken, fetchCurrentUser, getAuthToken, getTokenExpiryMs, isTokenExpired, logoutUser } from './lib/auth.js';
 import { loadInterviewHistory } from './lib/storage.js';
+import { useToast } from './hooks/useToast.js';
 
 const initialDraft = {
   candidateName: '',
@@ -149,6 +150,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestSessionEnded, setGuestSessionEnded] = useState(false);
+  const { showToast } = useToast();
 
   const navigate = useCallback((path, options = {}) => {
     const nextPath = path || '/setup';
@@ -384,7 +386,7 @@ export default function App() {
     navigateToPhase('setup');
   }
 
-  function handleAuthSuccess(user) {
+  async function handleAuthSuccess(user) {
     setCurrentUser(user);
     setGuestSessionEnded(false);
     setDraft((prev) => ({
@@ -392,6 +394,19 @@ export default function App() {
       candidateName: prev.candidateName || displayNameForUser(user)
     }));
     navigate(user.isGuest ? '/setup' : '/home', { replace: true });
+
+    if (!user.isGuest) {
+      const pendingSessionId = localStorage.getItem('pending_claim_session_id');
+      if (pendingSessionId) {
+        localStorage.removeItem('pending_claim_session_id');
+        try {
+          await claimSession(pendingSessionId);
+          showToast('Your interview results have been saved to your account.', 'success');
+        } catch {
+          // One attempt only — don't retry or block auth success on this.
+        }
+      }
+    }
   }
 
   function handleLogout(redirectTo = '/login') {

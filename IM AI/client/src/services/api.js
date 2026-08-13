@@ -84,6 +84,8 @@ export const fetchQuestionBank = (role) =>
 
 export const fetchSessions = () => request('/sessions');
 
+export const claimSession = (id) => request(`/sessions/${id}/claim`, { method: 'POST' });
+
 export const uploadResume = async (file) => {
   const fd = new FormData();
   fd.append('resume', file);

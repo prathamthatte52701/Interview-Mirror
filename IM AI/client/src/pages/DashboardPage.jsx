@@ -151,6 +151,7 @@ export default function DashboardPage({ session, summary, history = [], loading 
   // Guest: clear token immediately, run countdown, redirect at 0
   useEffect(() => {
     if (!isGuestSession) return undefined;
+    if (session?.id) localStorage.setItem('pending_claim_session_id', session.id);
     localStorage.removeItem('interview_mirror_access_token');
     const id = setInterval(() => {
       setCountdown((c) => Math.max(0, c - 1));
