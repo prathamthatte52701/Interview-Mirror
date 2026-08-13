@@ -5,6 +5,7 @@ import {
   LineChart, Line, CartesianGrid, XAxis, YAxis
 } from 'recharts';
 import ScoreRing from '../components/ScoreRing.jsx';
+import { useToast } from '../hooks/useToast.js';
 
 function AccordionItem({ q, a, ideal, score }) {
   const [open, setOpen] = useState(false);
@@ -109,9 +110,9 @@ export default function DashboardPage({ session, summary, history, onRestart, on
     return decoded?.isGuest === true;
   });
   const [countdown, setCountdown] = useState(5);
+  const { showToast } = useToast();
 
   const [exportBusy, setExportBusy] = useState(false);
-  const [exportMessage, setExportMessage] = useState('');
   const [selectedHistoryId, setSelectedHistoryId] = useState(history?.[0]?.id || '');
   const [openSessionGroups, setOpenSessionGroups] = useState({});
   const sessionGroups = useMemo(() => groupSessions(history), [history]);
@@ -186,7 +187,6 @@ export default function DashboardPage({ session, summary, history, onRestart, on
 
   async function handleExportPDF() {
     setExportBusy(true);
-    setExportMessage('');
     try {
       const { jsPDF } = await import('jspdf');
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -258,10 +258,10 @@ export default function DashboardPage({ session, summary, history, onRestart, on
       }
 
       doc.save(`InterviewMirrorAI_${session?.candidateName || 'report'}_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`);
-      setExportMessage('PDF export is ready.');
+      showToast('PDF report downloaded.', 'success');
     } catch (err) {
       console.error('PDF export failed:', err);
-      setExportMessage('PDF export failed. Please try again.');
+      showToast('PDF export failed. Please try again.', 'error');
     } finally {
       setExportBusy(false);
     }
@@ -334,9 +334,6 @@ export default function DashboardPage({ session, summary, history, onRestart, on
               Export PDF
             </button>
           </div>
-          {exportMessage && (
-            <span className="dashboard-export-message">{exportMessage}</span>
-          )}
         </div>
       </div>
 
