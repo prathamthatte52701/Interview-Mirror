@@ -49,7 +49,7 @@ export default function ContactPage({ onNavigate }) {
                 <div className="static-contact-icon"><Mail size={20} /></div>
                 <div>
                   <strong>Support Email</strong>
-                  <span>support@interviewmirror.ai (placeholder — not yet active)</span>
+                  <span>prathamthatte527@gmail.com</span>
                 </div>
               </div>
 
