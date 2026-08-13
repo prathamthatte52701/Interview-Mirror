@@ -80,6 +80,7 @@ export default function InterviewPage({
   }, [guestExpiredMsg]);
 
   const handleEndInterview = useCallback(() => {
+    if (!window.confirm('End this interview now? This closes the session.')) return;
     window.clearTimeout(silenceTimerRef.current);
     window.clearTimeout(liveAnalysisTimerRef.current);
     stopAllSpeechActivity();
