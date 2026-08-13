@@ -7,6 +7,13 @@ const API_ROOT = RAW_API_BASE.endsWith('/interview')
 
 export const API_BASE = `${API_ROOT}/interview`;
 
+export class NetworkError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'NetworkError';
+  }
+}
+
 function serverUnavailableMessage() {
   return 'Interview server is not running. Please start the backend server and try again.';
 }
@@ -29,9 +36,9 @@ async function request(path, options = {}) {
     });
   } catch (err) {
     if (err?.name === 'AbortError') {
-      throw new Error('Interview server did not respond in time. Please try again.');
+      throw new NetworkError('Interview server did not respond in time. Please try again.');
     }
-    throw new Error(serverUnavailableMessage());
+    throw new NetworkError(serverUnavailableMessage());
   } finally {
     window.clearTimeout(timeoutId);
   }

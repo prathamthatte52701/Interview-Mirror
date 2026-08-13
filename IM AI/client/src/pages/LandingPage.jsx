@@ -29,7 +29,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import '../styles/landing.css';
-import { fetchSessions } from '../services/api.js';
+import { fetchSessions, NetworkError } from '../services/api.js';
 
 const ROLES = [
   { icon: Code2, name: 'Software Engineering' },
@@ -281,15 +281,7 @@ export default function LandingPage({ onStart, onProfile, onNavigate, userName }
         }
       } catch (err) {
         if (!cancelled) {
-          const msg = String(err?.message || '').toLowerCase();
-          const isDown =
-            msg.includes('server') ||
-            msg.includes('failed to fetch') ||
-            msg.includes('networkerror') ||
-            msg.includes('network error') ||
-            msg.includes('not running') ||
-            msg.includes('econnrefused');
-          if (isDown) setServerDown(true);
+          if (err instanceof NetworkError) setServerDown(true);
           setLastSession(null);
         }
       } finally {
