@@ -109,6 +109,13 @@ function normalizePastedContext(value) {
   return `${text.slice(0, PASTED_CONTEXT_PREVIEW_LIMIT)}\n\n[Context trimmed to keep interview setup responsive.]`;
 }
 
+const ACCEPTED_RESUME_EXTENSIONS = ['.txt', '.pdf', '.doc', '.docx'];
+
+function isAcceptedFileType(file) {
+  const name = String(file?.name || '').toLowerCase();
+  return ACCEPTED_RESUME_EXTENSIONS.some((ext) => name.endsWith(ext));
+}
+
 function SelectCard({
   selected,
   onSelect,
@@ -154,6 +161,7 @@ export default function SetupPage({
   const [uploadingResume, setUploadingResume] = useState(false);
   const [resumeFilename, setResumeFilename] = useState('');
   const [dragover, setDragover] = useState(false);
+  const [resumeError, setResumeError] = useState('');
   const fileRef = useRef(null);
 
   function patch(key, value) {
@@ -166,15 +174,19 @@ export default function SetupPage({
   async function handleResumeFile(file) {
     if (!file) return;
 
+    if (!isAcceptedFileType(file)) {
+      setResumeError('Unsupported file type — use PDF, TXT, DOC, or DOCX');
+      return;
+    }
+
+    setResumeError('');
     setUploadingResume(true);
     try {
       const result = await uploadResume(file);
       patch('resumeText', result.text);
       setResumeFilename(file.name);
-    } catch {
-      const text = await file.text().catch(() => '');
-      patch('resumeText', normalizePastedContext(text));
-      setResumeFilename(file.name);
+    } catch (err) {
+      setResumeError(err?.message || 'Resume upload failed. You can paste resume text instead.');
     } finally {
       setUploadingResume(false);
     }
@@ -186,7 +198,14 @@ export default function SetupPage({
     setDragover(false);
 
     const file = event.dataTransfer.files?.[0];
-    if (file) handleResumeFile(file);
+    if (!file) return;
+
+    if (!isAcceptedFileType(file)) {
+      setResumeError('Unsupported file type — use PDF, TXT, DOC, or DOCX');
+      return;
+    }
+
+    handleResumeFile(file);
   }
 
   const selectedDomain = DOMAINS.find((domain) => domain.value === draft.role);
@@ -394,12 +413,19 @@ export default function SetupPage({
               />
             </div>
 
+            {resumeError && (
+              <p className="setup-field-error"><AlertCircle size={14} /> {resumeError}</p>
+            )}
+
             <details className="setup-details">
               <summary>Paste resume text</summary>
               <textarea
                 className="form-textarea"
                 value={draft.resumeText}
-                onChange={(event) => patch('resumeText', normalizePastedContext(event.target.value))}
+                onChange={(event) => {
+                  if (resumeError) setResumeError('');
+                  patch('resumeText', normalizePastedContext(event.target.value));
+                }}
                 placeholder="Paste your resume content here..."
                 rows={4}
               />
