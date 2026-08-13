@@ -180,6 +180,10 @@ export default function DashboardPage({ session, summary, history = [], loading 
   const radarData = Object.entries(metrics)
     .filter(([k]) => k !== 'overall')
     .map(([metric, score]) => ({ metric, score }));
+  const radarHasEnoughData = radarData.filter((d) => Number.isFinite(d.score)).length >= 2;
+  const radarTextSummary = radarData.length
+    ? `Performance radar across ${radarData.length} metrics: ${radarData.map((d) => `${d.metric} ${Number.isFinite(d.score) ? d.score : 'not available'}`).join(', ')}.`
+    : '';
 
   const trendData = (session?.transcript || []).map((entry, i) => ({
     round: `Q${i + 1}`,
@@ -187,6 +191,10 @@ export default function DashboardPage({ session, summary, history = [], loading 
     confidence: entry.analysis?.metrics?.confidence,
     specificity: entry.analysis?.metrics?.specificity
   }));
+  const trendHasEnoughData = trendData.filter((d) => Number.isFinite(d.overall)).length >= 2;
+  const trendTextSummary = trendData.length
+    ? `Overall score trend across ${trendData.length} questions: ${trendData.map((d) => `${d.round} ${Number.isFinite(d.overall) ? d.overall : 'not available'}`).join(', ')}.`
+    : '';
 
   const strengths      = summary?.strengths || [];
   const weaknesses     = summary?.weaknesses || [];
@@ -413,29 +421,43 @@ export default function DashboardPage({ session, summary, history = [], loading 
       <div className="charts-row">
         <div className="chart-card">
           <div className="panel-header"><span className="panel-title">Performance Radar</span></div>
-          <ResponsiveContainer width="100%" height={260}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="rgba(255,255,255,0.06)" />
-              <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#777' }} />
-              <Radar dataKey="score" stroke="rgba(255,255,255,0.7)" fill="rgba(255,255,255,0.08)" strokeWidth={1.5} />
-              <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 10 }} />
-            </RadarChart>
-          </ResponsiveContainer>
+          {radarHasEnoughData ? (
+            <>
+              <ResponsiveContainer width="100%" height={260}>
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="rgba(255,255,255,0.06)" />
+                  <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#777' }} />
+                  <Radar dataKey="score" stroke="rgba(255,255,255,0.7)" fill="rgba(255,255,255,0.08)" strokeWidth={1.5} />
+                  <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 10 }} />
+                </RadarChart>
+              </ResponsiveContainer>
+              <span className="sr-only">{radarTextSummary}</span>
+            </>
+          ) : (
+            <div className="chart-empty-state">Not enough data yet for this view.</div>
+          )}
         </div>
 
         <div className="chart-card">
           <div className="panel-header"><span className="panel-title">Round-by-Round Trend</span></div>
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="round" tick={{ fontSize: 10, fill: '#777' }} />
-              <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: '#777' }} />
-              <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 10 }} />
-              <Line type="monotone" dataKey="overall"    stroke="rgba(255,255,255,0.8)"  strokeWidth={2} dot={{ r: 3, fill: '#fff' }} />
-              <Line type="monotone" dataKey="confidence" stroke="rgba(96,165,250,0.7)"   strokeWidth={2} dot={{ r: 3, fill: '#60a5fa' }} />
-              <Line type="monotone" dataKey="specificity" stroke="rgba(74,222,128,0.7)"  strokeWidth={2} dot={{ r: 3, fill: '#4ade80' }} />
-            </LineChart>
-          </ResponsiveContainer>
+          {trendHasEnoughData ? (
+            <>
+              <ResponsiveContainer width="100%" height={260}>
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                  <XAxis dataKey="round" tick={{ fontSize: 10, fill: '#777' }} />
+                  <YAxis domain={[0, 10]} tick={{ fontSize: 10, fill: '#777' }} />
+                  <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 10 }} />
+                  <Line type="monotone" dataKey="overall"    stroke="rgba(255,255,255,0.8)"  strokeWidth={2} dot={{ r: 3, fill: '#fff' }} />
+                  <Line type="monotone" dataKey="confidence" stroke="rgba(96,165,250,0.7)"   strokeWidth={2} dot={{ r: 3, fill: '#60a5fa' }} />
+                  <Line type="monotone" dataKey="specificity" stroke="rgba(74,222,128,0.7)"  strokeWidth={2} dot={{ r: 3, fill: '#4ade80' }} />
+                </LineChart>
+              </ResponsiveContainer>
+              <span className="sr-only">{trendTextSummary}</span>
+            </>
+          ) : (
+            <div className="chart-empty-state">Not enough data yet for this view.</div>
+          )}
         </div>
       </div>
 
