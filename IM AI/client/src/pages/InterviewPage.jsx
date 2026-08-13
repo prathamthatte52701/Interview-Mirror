@@ -69,10 +69,15 @@ export default function InterviewPage({
   const liveAnalysisRateLimitWarnedRef = useRef(false);
   const forceSubmitPendingRef = useRef(false);
   const presenceSnapshotRef = useRef(presenceSnapshot);
+  const expiredDialogRef = useRef(null);
 
   useEffect(() => {
     presenceSnapshotRef.current = presenceSnapshot;
   }, [presenceSnapshot]);
+
+  useEffect(() => {
+    if (guestExpiredMsg) expiredDialogRef.current?.focus();
+  }, [guestExpiredMsg]);
 
   const handleEndInterview = useCallback(() => {
     window.clearTimeout(silenceTimerRef.current);
@@ -317,9 +322,17 @@ export default function InterviewPage({
           background: 'rgba(0,0,0,0.75)',
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
-          <div className="panel" style={{ maxWidth: 420, textAlign: 'center', padding: '36px 28px' }}>
+          <div
+            className="panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="guestExpiredHeading"
+            ref={expiredDialogRef}
+            tabIndex={-1}
+            style={{ maxWidth: 420, textAlign: 'center', padding: '36px 28px' }}
+          >
             <div style={{ fontSize: '2rem', marginBottom: '14px' }}>⏱</div>
-            <h3 style={{ marginBottom: '12px' }}>Demo session expired</h3>
+            <h3 id="guestExpiredHeading" style={{ marginBottom: '12px' }}>Demo session expired</h3>
             <p style={{ color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.6 }}>{guestExpiredMsg}</p>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Redirecting in 3 seconds...</p>
           </div>
