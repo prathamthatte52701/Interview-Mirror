@@ -155,6 +155,7 @@ export default function App() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestSessionEnded, setGuestSessionEnded] = useState(false);
   const [sessionRestoreChecked, setSessionRestoreChecked] = useState(false);
+  const [resumeCandidate, setResumeCandidate] = useState(null);
   const { showToast } = useToast();
 
   const navigate = useCallback((path, options = {}) => {
@@ -487,6 +488,36 @@ export default function App() {
         }
       }
     }
+
+    // A leftover active-session id (e.g. from before an auto-logout mid-interview)
+    // is only worth surfacing if it actually still belongs to this user and isn't
+    // already ended — otherwise silently drop it, nothing to resume.
+    const activeSessionId = localStorage.getItem(ACTIVE_SESSION_KEY);
+    if (activeSessionId) {
+      try {
+        const restorable = await fetchSession(activeSessionId);
+        if (restorable && !restorable.endedAt) {
+          setResumeCandidate(restorable);
+        } else {
+          localStorage.removeItem(ACTIVE_SESSION_KEY);
+        }
+      } catch {
+        localStorage.removeItem(ACTIVE_SESSION_KEY);
+      }
+    }
+  }
+
+  function handleResumeSession() {
+    if (!resumeCandidate) return;
+    setSession(resumeCandidate);
+    setCurrentQ(resumeCandidate.currentQuestion || '');
+    setResumeCandidate(null);
+    navigateToPhase('interview');
+  }
+
+  function handleDismissResume() {
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
+    setResumeCandidate(null);
   }
 
   function handleLogout(redirectTo = '/login') {
@@ -592,6 +623,25 @@ export default function App() {
         onNavigate={navigate}
         guestSessionEnded={guestSessionEnded}
       />
+    );
+  }
+
+  if (resumeCandidate) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div className="panel" style={{ maxWidth: 440, textAlign: 'center', padding: '40px 32px' }}>
+          <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>⏸️</div>
+          <h2 style={{ marginBottom: '12px' }}>Resume your interview?</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '28px', lineHeight: 1.6 }}>
+            You have an interview in progress — {resumeCandidate.candidateName ? `for ${resumeCandidate.candidateName}, ` : ''}
+            {resumeCandidate.role?.replaceAll('-', ' ') || 'unfinished'}. Pick up where you left off, or start fresh.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="btn btn-primary" onClick={handleResumeSession}>Resume</button>
+            <button className="btn btn-ghost" onClick={handleDismissResume}>Start fresh instead</button>
+          </div>
+        </div>
+      </div>
     );
   }
 
