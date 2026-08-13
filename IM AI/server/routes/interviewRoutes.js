@@ -2,7 +2,8 @@ import express from 'express';
 import multer from 'multer';
 import {
   createSession, answerQuestion, endSession,
-  getSession, listSessions, liveAnalyzeAnswer
+  getSession, listSessions, liveAnalyzeAnswer,
+  deleteSession, claimSession
 } from '../lib/sessionEngine.js';
 import { questionBank } from '../lib/questionBank.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -15,6 +16,12 @@ const interviewActionLimiter = makeLimiter({
   windowMs: 60 * 60 * 1000,
   max: 20,
   prefix: 'rl:interviewAction:',
+  keyGenerator: userKeyGenerator
+});
+const claimLimiter = makeLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  prefix: 'rl:claimSession:',
   keyGenerator: userKeyGenerator
 });
 const CONTEXT_LIMITS = {
@@ -42,6 +49,43 @@ router.get('/sessions/:id', requireAuth, async (req, res) => {
   const session = await getSession(req.params.id, { userId: req.userId, guestId: req.guestId });
   if (!session) return res.status(404).json({ error: 'Session not found' });
   res.json(session);
+});
+
+router.delete('/sessions/:id', requireAuth, async (req, res) => {
+  try {
+    await deleteSession(req.params.id, { userId: req.userId, guestId: req.guestId });
+    logger.info('interview_session_deleted', {
+      userId: req.userId,
+      guestId: req.guestId,
+      sessionId: req.params.id,
+      ts: new Date().toISOString()
+    });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.message === 'Session not found') return res.status(404).json({ error: err.message });
+    logger.error('interview_session_delete_error', { message: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/sessions/:id/claim', requireAuth, claimLimiter, async (req, res) => {
+  if (!req.userId) {
+    return res.status(403).json({ error: 'Only registered users can claim a session.' });
+  }
+  try {
+    await claimSession(req.params.id, req.userId);
+    logger.info('interview_session_claimed', {
+      userId: req.userId,
+      sessionId: req.params.id,
+      ts: new Date().toISOString()
+    });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.message === 'Session not found') return res.status(404).json({ error: err.message });
+    if (err.message === 'Session already claimed') return res.status(409).json({ error: err.message });
+    logger.error('interview_session_claim_error', { message: err.message });
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── Question Bank ───────────────────────────────────────────────────────────────

@@ -386,6 +386,26 @@ export async function endSession(sessionId, scope) {
   return session.summary;
 }
 
+// ─── Delete Session ────────────────────────────────────────────────────────────
+export async function deleteSession(sessionId, scope) {
+  const scopeFilter = buildScopeFilter(scope);
+  const existing = await InterviewSession.findOne({ id: sessionId, ...scopeFilter });
+  if (!existing) throw new Error('Session not found');
+  await InterviewSession.deleteOne({ id: sessionId, ...scopeFilter });
+}
+
+// ─── Claim Session ─────────────────────────────────────────────────────────────
+export async function claimSession(sessionId, userId) {
+  const sessionDoc = await InterviewSession.findOne({ id: sessionId });
+  if (!sessionDoc) throw new Error('Session not found');
+  if (sessionDoc.userId) throw new Error('Session already claimed');
+
+  sessionDoc.userId = userId;
+  sessionDoc.guestId = null;
+  await sessionDoc.save();
+  return serializeSession(sessionDoc);
+}
+
 // ─── List Sessions ─────────────────────────────────────────────────────────────
 export async function listSessions(scope) {
   const sessions = await InterviewSession.find(buildScopeFilter(scope)).sort({ createdAt: -1 });
