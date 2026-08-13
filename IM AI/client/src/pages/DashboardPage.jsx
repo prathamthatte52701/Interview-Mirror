@@ -12,7 +12,14 @@ function AccordionItem({ q, a, ideal, score }) {
   return (
     <div className={`accordion-item ${open ? 'open' : ''}`}>
       <button className="accordion-trigger" onClick={() => setOpen(v => !v)}>
-        <span style={{ flex: 1, fontSize: '0.82rem', paddingRight: '8px' }}>{q?.slice(0, 90)}{q?.length > 90 ? '…' : ''}</span>
+        <span style={{ flex: 1, fontSize: '0.82rem', paddingRight: '8px' }}>
+          {q?.slice(0, 90)}{q?.length > 90 ? '…' : ''}
+          {!open && a && (
+            <span style={{ display: 'block', fontSize: '0.74rem', color: 'rgba(255,255,255,0.35)', marginTop: '3px' }}>
+              {a.slice(0, 100)}{a.length > 100 ? '…' : ''}
+            </span>
+          )}
+        </span>
         <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginRight: '6px' }}>
           {score ? `${score}/10` : ''}
         </span>
@@ -25,11 +32,11 @@ function AccordionItem({ q, a, ideal, score }) {
           <div className="accordion-compare">
             <div className="compare-block">
               <div className="compare-block-label candidate">Your Answer</div>
-              <div>{a?.slice(0, 280)}{a?.length > 280 ? '…' : ''}</div>
+              <div className="compare-block-text">{a || 'No answer recorded.'}</div>
             </div>
             <div className="compare-block">
               <div className="compare-block-label ideal">Model Answer</div>
-              <div>{ideal || 'AI model answer not available for this question.'}</div>
+              <div className="compare-block-text">{ideal || 'AI model answer not available for this question.'}</div>
             </div>
           </div>
         </div>

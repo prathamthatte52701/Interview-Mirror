@@ -1824,6 +1824,13 @@ small { font-size: 0.78rem; color: var(--text-muted); }
 .compare-block-label.candidate { color: var(--info); }
 .compare-block-label.ideal     { color: var(--success); }
 
+.compare-block-text {
+  max-height: 320px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* ─── History Cards ──────────────────────────────────────────── */
 .history-list { display: flex; flex-direction: column; gap: 8px; }
 .history-card {
