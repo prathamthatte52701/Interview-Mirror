@@ -46,24 +46,27 @@ export default function PrivacyPage({ onNavigate }) {
               <p>We use collected information to authenticate your account, provide personalized interview practice sessions, generate performance feedback, maintain your session history, and improve the quality of the platform. We do not sell your personal information to third parties.</p>
 
               <h2>3. Data Storage and Security</h2>
-              <p>Your data is stored in a MongoDB database. Passwords are hashed using industry-standard bcrypt before storage and are never stored in plain text. Authentication tokens are signed using JWT and expire after one hour to protect your session. We apply reasonable technical safeguards to protect your data from unauthorized access.</p>
+              <p>Your data is stored in a MongoDB database. Passwords are hashed using industry-standard bcrypt before storage and are never stored in plain text. Authentication tokens are signed using JWT and expire after 1 hour by default, or up to 7 days if you choose "Remember Me" at login, to protect your session. We apply reasonable technical safeguards to protect your data from unauthorized access.</p>
 
               <h2>4. Session Data</h2>
-              <p>Interview session transcripts, AI analysis results, scores, and history are stored to allow you to review past performance. This data is associated with your account and is accessible only to you when logged in. You may request deletion of your data by contacting us.</p>
+              <p>Interview session transcripts, AI analysis results, scores, and history are stored to allow you to review past performance. This data is associated with your account and is accessible only to you when logged in. You can delete a session directly from your account at any time, or contact us for help with anything self-service doesn't cover.</p>
 
-              <h2>5. Cookies and Local Storage</h2>
+              <h2>5. Administrator Access</h2>
+              <p>Authorized administrators of this platform can view account information and interview session data for support and platform integrity purposes, such as investigating abuse reports or moderating accounts.</p>
+
+              <h2>6. Cookies and Local Storage</h2>
               <p>InterviewMirror AI uses browser local storage to maintain your authentication session token. No tracking cookies or third-party advertising cookies are used. Clearing your browser's local storage will log you out of your session.</p>
 
-              <h2>6. Third-Party Services</h2>
+              <h2>7. Third-Party Services</h2>
               <p>The platform uses the Gemini AI API for generating interview questions and analyzing responses. Interaction data sent to this API is subject to the respective provider's privacy policies. We do not send identifiable personal information to AI providers beyond what is necessary for generating interview content.</p>
 
-              <h2>7. Data Retention</h2>
-              <p>Account data and session history are retained as long as your account exists. Interview transcripts may be retained for up to 90 days after a session. You may request removal of specific sessions or full account deletion by contacting our support team.</p>
+              <h2>8. Data Retention</h2>
+              <p>Account data and session history are retained as long as your account exists, or until you delete a specific session or your account. You may request removal of specific sessions or full account deletion by contacting our support team if you are unable to do so yourself.</p>
 
-              <h2>8. Your Rights</h2>
-              <p>You have the right to access, correct, or delete your personal information. You may contact us at any time to request data export or account deletion. We will process such requests within a reasonable timeframe.</p>
+              <h2>9. Your Rights</h2>
+              <p>You have the right to access, correct, or delete your personal information. You can delete your account directly from your Profile page at any time. For data export requests or anything Profile self-service doesn't cover, you may contact us. We will process such requests within a reasonable timeframe.</p>
 
-              <h2>9. Changes to This Policy</h2>
+              <h2>10. Changes to This Policy</h2>
               <p>We may update this Privacy Policy from time to time. Significant changes will be communicated through the platform. Continued use of the service after changes take effect indicates your acceptance of the updated policy.</p>
             </div>
 
