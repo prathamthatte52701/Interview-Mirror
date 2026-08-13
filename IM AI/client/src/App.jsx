@@ -140,6 +140,8 @@ export default function App() {
   const [routePath, setRoutePath] = useState(getCurrentPath);
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [sessionVerifyError, setSessionVerifyError] = useState('');
+  const [authRetryToken, setAuthRetryToken] = useState(0);
   const [draft, setDraft] = useState(initialDraft);
   const [session, setSession] = useState(null);
   const [currentQuestion, setCurrentQ] = useState('');
@@ -177,22 +179,39 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    async function restoreUser() {
+    async function attempt(isRetry) {
       try {
         const user = await fetchCurrentUser();
-        if (!cancelled) setCurrentUser(user);
+        if (cancelled) return;
+        setCurrentUser(user);
+        setSessionVerifyError('');
+        setAuthChecked(true);
       } catch (err) {
-        if (!cancelled) setError(err.message || 'Please log in again.');
-      } finally {
-        if (!cancelled) setAuthChecked(true);
+        if (cancelled) return;
+        const authFailure = err.status === 401 || err.status === 403;
+        if (authFailure) {
+          setError(err.message || 'Please log in again.');
+          setSessionVerifyError('');
+          setAuthChecked(true);
+          return;
+        }
+        // Transient failure (network blip, cold-start, 5xx) — the token is still
+        // valid, so retry once before asking the user to retry manually.
+        if (!isRetry) {
+          window.setTimeout(() => {
+            if (!cancelled) attempt(true);
+          }, 1500);
+          return;
+        }
+        setSessionVerifyError(err.message || "Couldn't verify your session. Check your connection and try again.");
       }
     }
 
-    restoreUser();
+    attempt(false);
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authRetryToken]);
 
   useEffect(() => {
     if (!authChecked) return;
@@ -471,10 +490,20 @@ export default function App() {
             <section className="auth-shell">
               <form className="auth-card">
                 <div className="auth-card-header">
-                  <span className="auth-card-kicker">Loading</span>
-                  <h2>Checking your session</h2>
-                  <p>Please wait while InterviewMirror AI restores your secure session.</p>
+                  <span className="auth-card-kicker">{sessionVerifyError ? 'Connection issue' : 'Loading'}</span>
+                  <h2>{sessionVerifyError ? "Couldn't verify your session" : 'Checking your session'}</h2>
+                  <p>{sessionVerifyError || 'Please wait while InterviewMirror AI restores your secure session.'}</p>
                 </div>
+                {sessionVerifyError && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    style={{ marginTop: '16px' }}
+                    onClick={() => setAuthRetryToken((n) => n + 1)}
+                  >
+                    Retry
+                  </button>
+                )}
               </form>
             </section>
           </div>

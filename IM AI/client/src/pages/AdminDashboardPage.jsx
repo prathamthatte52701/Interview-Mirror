@@ -286,6 +286,8 @@ export default function AdminDashboardPage({ onNavigate }) {
   const [tab, setTab] = useState('users');
   const [ready, setReady] = useState(false);
   const [denied, setDenied] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  const [retryToken, setRetryToken] = useState(0);
 
   function goTo(path) {
     if (onNavigate) onNavigate(path);
@@ -297,16 +299,34 @@ export default function AdminDashboardPage({ onNavigate }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+
+    async function attempt(isRetry) {
       try {
         await fetchAdminHealth();
-        if (!cancelled) setReady(true);
-      } catch {
-        if (!cancelled) setDenied(true);
+        if (cancelled) return;
+        setReady(true);
+        setVerifyError('');
+      } catch (err) {
+        if (cancelled) return;
+        // Only a genuine 401/403 means the admin session is actually invalid —
+        // a network blip or 5xx must not bounce a valid admin to the login page.
+        if (err.status === 401 || err.status === 403) {
+          setDenied(true);
+          return;
+        }
+        if (!isRetry) {
+          window.setTimeout(() => {
+            if (!cancelled) attempt(true);
+          }, 1500);
+          return;
+        }
+        setVerifyError(err.message || "Couldn't verify your admin session. Check your connection and try again.");
       }
-    })();
+    }
+
+    attempt(false);
     return () => { cancelled = true; };
-  }, []);
+  }, [retryToken]);
 
   useEffect(() => {
     if (denied) goTo('/admin/login');
@@ -321,7 +341,16 @@ export default function AdminDashboardPage({ onNavigate }) {
   if (!ready) {
     return (
       <main className="admin-page">
-        <div className="admin-loading">Checking admin session…</div>
+        <div className="admin-loading">
+          {verifyError || 'Checking admin session…'}
+          {verifyError && (
+            <div style={{ marginTop: '12px' }}>
+              <button type="button" className="admin-btn" onClick={() => setRetryToken((n) => n + 1)}>
+                <RefreshCw size={14} /> Retry
+              </button>
+            </div>
+          )}
+        </div>
       </main>
     );
   }

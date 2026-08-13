@@ -117,7 +117,9 @@ async function authRequest(path, options = {}) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data.message || data.error || `Request failed: ${res.status}`);
+    const error = new Error(data.message || data.error || `Request failed: ${res.status}`);
+    error.status = res.status;
+    throw error;
   }
 
   return data;
@@ -246,7 +248,11 @@ export async function fetchCurrentUser() {
     });
     return data.user;
   } catch (error) {
-    clearAuthToken();
+    // Only a genuine auth rejection (expired/invalid token, banned account) should
+    // clear the token. A network blip, cold-start, or 5xx must not log a valid user out.
+    if (error.status === 401 || error.status === 403) {
+      clearAuthToken();
+    }
     throw error;
   }
 }
