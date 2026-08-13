@@ -370,7 +370,9 @@ export default function LandingPage({ onStart, onProfile, onNavigate, userName }
   const activeExample = PREVIEW_EXAMPLES[previewIndex];
 
   return (
-    <main className="landing-page-v2">
+    <>
+      <a href="#main-content" className="landing-skip-link">Skip to main content</a>
+      <main className="landing-page-v2" id="main-content">
       {/* Server-down banner */}
       {serverDown && (
         <div className="landing-server-down" role="alert">
@@ -551,8 +553,12 @@ export default function LandingPage({ onStart, onProfile, onNavigate, userName }
           <button type="button" onClick={() => onNavigate?.('/terms')}>Terms</button>
           <span aria-hidden="true">&bull;</span>
           <button type="button" onClick={() => onNavigate?.('/contact')}>Support</button>
+          <span aria-hidden="true">&bull;</span>
+          <a href="https://github.com/prathamthatte52701/Interview-Mirror" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <span className="landing-footer-credit">Built by Neural Nexus</span>
         </footer>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

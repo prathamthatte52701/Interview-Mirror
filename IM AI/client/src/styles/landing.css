@@ -23,6 +23,34 @@
   animation: lp-fade-in 500ms ease both;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.landing-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 16px;
+  background: #7C5CFF;
+  color: #FFFFFF;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 150ms ease;
+}
+.landing-skip-link:focus {
+  top: 8px;
+}
+
 /* Extremely subtle ambient glows only — no particles, no grid, no streaks */
 .landing-page-v2::before {
   content: '';
@@ -1004,6 +1032,20 @@
 }
 
 .landing-footer button:hover { color: var(--lc-text); }
+
+.landing-footer a {
+  color: var(--lc-muted);
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+.landing-footer a:hover { color: var(--lc-text); }
+
+.landing-footer-credit {
+  color: var(--lc-muted);
+  font-size: 13px;
+  margin-left: 4px;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SERVER-DOWN BANNER
