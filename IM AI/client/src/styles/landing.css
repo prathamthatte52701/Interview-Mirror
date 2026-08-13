@@ -353,6 +353,30 @@
   background: var(--lc-success);
 }
 
+.landing-preview-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing-preview-tag {
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--lc-border);
+  color: var(--lc-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.landing-preview-content {
+  animation: lp-fade-in 420ms ease both;
+}
+
 /* ── Preview body ── */
 .landing-preview-body {
   display: grid;
@@ -690,6 +714,7 @@
   .landing-hero-badge,
   .landing-hero-copy-v2,
   .landing-preview-wrap,
+  .landing-preview-content,
   .landing-feature-card,
   .landing-primary-cta {
     animation: none !important;

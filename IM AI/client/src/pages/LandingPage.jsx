@@ -44,17 +44,49 @@ const ROLES = [
   { icon: PenTool, name: 'Design & UX', slug: 'design' }
 ];
 
-const METRICS = [
-  { icon: Shield,   label: 'Confidence',  value: '8.7/10', color: 'cyan'   },
-  { icon: Brain,    label: 'Clarity',     value: '9.1/10', color: 'blue'   },
-  { icon: Target,   label: 'Specificity', value: '8.4/10', color: 'violet' },
-  { icon: Activity, label: 'Presence',    value: 'Strong', color: 'green'  }
-];
-
-const ANALYSIS_ITEMS = [
-  'Detected confident opening and clear project context.',
-  'Good structure, but answer can include stronger outcome metrics.',
-  'Eye contact and vocal flow indicate strong interview presence.'
+const PREVIEW_EXAMPLES = [
+  {
+    question: 'Tell me about a project where you made a difficult technical decision under pressure.',
+    metrics: [
+      { icon: Shield,   label: 'Confidence',  value: '8.7/10', color: 'cyan'   },
+      { icon: Brain,    label: 'Clarity',     value: '9.1/10', color: 'blue'   },
+      { icon: Target,   label: 'Specificity', value: '8.4/10', color: 'violet' },
+      { icon: Activity, label: 'Presence',    value: 'Strong', color: 'green'  }
+    ],
+    analysis: [
+      'Detected confident opening and clear project context.',
+      'Good structure, but answer can include stronger outcome metrics.',
+      'Eye contact and vocal flow indicate strong interview presence.'
+    ]
+  },
+  {
+    question: 'Walk me through how you would prioritize a backlog with conflicting stakeholder requests.',
+    metrics: [
+      { icon: Shield,   label: 'Confidence',  value: '7.9/10', color: 'cyan'   },
+      { icon: Brain,    label: 'Clarity',     value: '8.6/10', color: 'blue'   },
+      { icon: Target,   label: 'Specificity', value: '8.9/10', color: 'violet' },
+      { icon: Activity, label: 'Presence',    value: 'Steady', color: 'green'  }
+    ],
+    analysis: [
+      'Answer opens with a clear prioritization framework.',
+      'Consider naming a concrete stakeholder trade-off example.',
+      'Calm pacing and consistent tone throughout the response.'
+    ]
+  },
+  {
+    question: 'Describe a time you had to explain a technical concept to a non-technical audience.',
+    metrics: [
+      { icon: Shield,   label: 'Confidence',  value: '8.2/10', color: 'cyan'   },
+      { icon: Brain,    label: 'Clarity',     value: '9.3/10', color: 'blue'   },
+      { icon: Target,   label: 'Specificity', value: '7.8/10', color: 'violet' },
+      { icon: Activity, label: 'Presence',    value: 'Strong', color: 'green'  }
+    ],
+    analysis: [
+      'Simplified analogy landed well for a non-technical listener.',
+      'Could tighten the answer — slightly over the ideal length.',
+      'Confident tone maintained without noticeable filler words.'
+    ]
+  }
 ];
 
 const FEATURES = [
@@ -293,6 +325,19 @@ export default function LandingPage({ onStart, onProfile, onNavigate, userName }
     return () => { cancelled = true; };
   }, []);
 
+  const [previewIndex, setPreviewIndex] = useState(0);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return;
+    const id = setInterval(() => {
+      setPreviewIndex((i) => (i + 1) % PREVIEW_EXAMPLES.length);
+    }, 5500);
+    return () => clearInterval(id);
+  }, []);
+
+  const activeExample = PREVIEW_EXAMPLES[previewIndex];
+
   return (
     <main className="landing-page-v2">
       {/* Server-down banner */}
@@ -379,50 +424,55 @@ export default function LandingPage({ onStart, onProfile, onNavigate, userName }
                     <span>LIVE SESSION PREVIEW</span>
                     <strong>Senior Interviewer Mode</strong>
                   </div>
-                  <span className="landing-live-ai"><i />LIVE AI</span>
+                  <div className="landing-preview-badges">
+                    <span className="landing-preview-tag">SAMPLE</span>
+                    <span className="landing-live-ai"><i />LIVE AI</span>
+                  </div>
                 </header>
 
-                <div className="landing-preview-body">
-                  <AINeuralCore />
+                <div className="landing-preview-content" key={previewIndex}>
+                  <div className="landing-preview-body">
+                    <AINeuralCore />
 
-                  <div className="landing-question-stack">
-                    <section className="landing-question-panel">
-                      <span>CURRENT QUESTION</span>
-                      <p>Tell me about a project where you made a difficult technical decision under pressure.</p>
-                      <Waveform />
-                    </section>
+                    <div className="landing-question-stack">
+                      <section className="landing-question-panel">
+                        <span>CURRENT QUESTION</span>
+                        <p>{activeExample.question}</p>
+                        <Waveform />
+                      </section>
 
-                    <div className="landing-metric-grid">
-                      {METRICS.map((metric) => {
-                        const Icon = metric.icon;
-                        return (
-                          <article key={metric.label} className={`landing-metric-card landing-metric-card--${metric.color}`}>
-                            <span className="lmc-icon"><Icon size={17} /></span>
-                            <div>
-                              <small>{metric.label}</small>
-                              <strong>{metric.value}</strong>
-                            </div>
-                          </article>
-                        );
-                      })}
+                      <div className="landing-metric-grid">
+                        {activeExample.metrics.map((metric) => {
+                          const Icon = metric.icon;
+                          return (
+                            <article key={metric.label} className={`landing-metric-card landing-metric-card--${metric.color}`}>
+                              <span className="lmc-icon"><Icon size={17} /></span>
+                              <div>
+                                <small>{metric.label}</small>
+                                <strong>{metric.value}</strong>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <section className="landing-analysis-feed">
-                  <header>
-                    <strong>AI ANALYSIS FEED</strong>
-                    <span className="laf-live"><i />Real-time</span>
-                  </header>
-                  <div>
-                    {ANALYSIS_ITEMS.map((item, index) => (
-                      <p key={item}>
-                        <i className={`feed-dot feed-dot-${index}`} />
-                        {item}
-                      </p>
-                    ))}
-                  </div>
-                </section>
+                  <section className="landing-analysis-feed">
+                    <header>
+                      <strong>AI ANALYSIS FEED</strong>
+                      <span className="laf-live"><i />Real-time</span>
+                    </header>
+                    <div>
+                      {activeExample.analysis.map((item, index) => (
+                        <p key={item}>
+                          <i className={`feed-dot feed-dot-${index}`} />
+                          {item}
+                        </p>
+                      ))}
+                    </div>
+                  </section>
+                </div>
               </div>
             </aside>
           </div>
