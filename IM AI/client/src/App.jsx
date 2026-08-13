@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AuthPage from './pages/AuthPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import AdminDashboardPage from './pages/AdminDashboardPage.jsx';
@@ -32,6 +32,8 @@ const CONTEXT_LIMITS = {
   resumeText: 12000,
   jdText: 8000
 };
+
+const ACTIVE_SESSION_KEY = 'active_interview_session_id';
 
 function trimContext(value = '', limit = 12000) {
   const text = String(value || '').trim();
@@ -152,6 +154,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestSessionEnded, setGuestSessionEnded] = useState(false);
+  const [sessionRestoreChecked, setSessionRestoreChecked] = useState(false);
   const { showToast } = useToast();
 
   const navigate = useCallback((path, options = {}) => {
@@ -213,6 +216,56 @@ export default function App() {
     };
   }, [authRetryToken]);
 
+  /* ── Restore an active interview session after a refresh ──
+     The in-progress session only ever lived in React memory, so a hard refresh
+     used to wipe it even though the backend still had everything. Guarded by a
+     ref (not just deps) so it runs exactly once per page load — it must NOT
+     fire again on a later in-app login/relogin, since that path is handled by
+     its own resume-with-prompt flow instead of this silent auto-restore. The
+     redirect-to-setup effect below waits for this to finish before it fires. */
+  const restoreAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (!authChecked || restoreAttemptedRef.current) return;
+    restoreAttemptedRef.current = true;
+
+    if (!currentUser) {
+      // Not logged in yet at mount time — nothing to restore here. A login that
+      // happens later in this same SPA session is a relogin, not a refresh, and
+      // is handled separately (Feature 2's resume-with-prompt flow), not here.
+      setSessionRestoreChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function restoreActiveSession() {
+      const storedId = localStorage.getItem(ACTIVE_SESSION_KEY);
+      if (!storedId) {
+        if (!cancelled) setSessionRestoreChecked(true);
+        return;
+      }
+      try {
+        const restored = await fetchSession(storedId);
+        if (cancelled) return;
+        if (restored && !restored.endedAt) {
+          setSession(restored);
+          setCurrentQ(restored.currentQuestion || '');
+        } else {
+          localStorage.removeItem(ACTIVE_SESSION_KEY);
+        }
+      } catch {
+        if (!cancelled) localStorage.removeItem(ACTIVE_SESSION_KEY);
+      } finally {
+        if (!cancelled) setSessionRestoreChecked(true);
+      }
+    }
+
+    restoreActiveSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [authChecked, currentUser]);
+
   useEffect(() => {
     if (!authChecked) return;
 
@@ -239,10 +292,11 @@ export default function App() {
     }
 
     if (routePath === '/interview' && !session) {
+      if (!sessionRestoreChecked) return;
       setError('Setup is required before starting an interview. Please choose your interview settings first.');
       navigate('/setup', { replace: true });
     }
-  }, [authChecked, currentUser, navigate, routePath, session]);
+  }, [authChecked, currentUser, navigate, routePath, session, sessionRestoreChecked]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -333,6 +387,7 @@ export default function App() {
       setSession(nextSession);
       setSelectedHistoryId('');
       setCurrentQ(firstQuestion);
+      localStorage.setItem(ACTIVE_SESSION_KEY, nextSession.id);
       navigateToPhase('interview');
     } catch (err) {
       setError(err.message || 'Failed to start interview');
@@ -382,6 +437,7 @@ export default function App() {
       await endSession(session.id);
       const refreshed = await fetchSession(session.id);
       setSession(refreshed);
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
       if (!currentUser?.isGuest) {
         const history = await loadInterviewHistory();
         setLocalHistory(Array.isArray(history) ? history : []);
@@ -401,6 +457,7 @@ export default function App() {
   function handleRestart() {
     setSession(null);
     setCurrentQ('');
+    localStorage.removeItem(ACTIVE_SESSION_KEY);
     setDraft({
       ...initialDraft,
       candidateName: displayNameForUser(currentUser)
