@@ -95,6 +95,19 @@ export default function InterviewPage({
   }, [stopAllSpeechActivity, stopCamera]);
 
   useEffect(() => {
+    const interviewActive = Boolean(currentQuestion) && !session?.endedAt;
+    if (!interviewActive) return undefined;
+
+    function handleBeforeUnload(event) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [currentQuestion, session?.endedAt]);
+
+  useEffect(() => {
     if (!currentQuestion) return undefined;
 
     window.clearTimeout(silenceTimerRef.current);
