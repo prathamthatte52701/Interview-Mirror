@@ -102,7 +102,10 @@ export function useSpeech(persona = 'calm-senior-interviewer') {
 
   useEffect(() => {
     const synth = window.speechSynthesis;
-    if (!synth) return;
+    if (!synth) {
+      setSpeechError("Voice replies need Chrome or Edge — your browser doesn't support them.");
+      return;
+    }
 
     const populateVoices = () => {
       const loadedVoices = synth.getVoices ?.() || [];
@@ -188,7 +191,7 @@ export function useSpeech(persona = 'calm-senior-interviewer') {
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    recognition.lang = 'en-IN';
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -217,6 +220,24 @@ export function useSpeech(persona = 'calm-senior-interviewer') {
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       setIsListening(false);
+
+      switch (event.error) {
+        case 'not-allowed':
+        case 'permission-denied':
+        case 'service-not-allowed':
+          setSpeechError("Microphone access was denied. Enable it in your browser's site settings to continue.");
+          break;
+        case 'audio-capture':
+          setSpeechError('No microphone was found. Connect one and try again.');
+          break;
+        case 'network':
+          setSpeechError('Speech recognition needs an internet connection.');
+          break;
+        case 'no-speech':
+          break;
+        default:
+          setSpeechError('Speech recognition hit a problem — try again.');
+      }
     };
 
     recognition.onend = () => {
