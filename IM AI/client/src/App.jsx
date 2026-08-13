@@ -508,7 +508,10 @@ export default function App() {
     return (
       <LandingPage
         userName={displayNameForUser(currentUser)}
-        onStart={() => navigateToPhase('setup')}
+        onStart={(roleSlug) => {
+          if (roleSlug) setDraft((d) => ({ ...d, role: roleSlug }));
+          navigateToPhase('setup');
+        }}
         onProfile={() => navigate('/profile')}
         onNavigate={navigate}
       />

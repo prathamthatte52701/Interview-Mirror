@@ -32,16 +32,16 @@ import '../styles/landing.css';
 import { fetchSessions, NetworkError } from '../services/api.js';
 
 const ROLES = [
-  { icon: Code2, name: 'Software Engineering' },
-  { icon: BriefcaseBusiness, name: 'Product Manager' },
-  { icon: DollarSign, name: 'Finance' },
-  { icon: Cpu, name: 'Machine Learning' },
-  { icon: Shield, name: 'Cybersecurity' },
-  { icon: BarChart3, name: 'Data Science' },
-  { icon: Users, name: 'HR & General' },
-  { icon: GitBranch, name: 'DevOps' },
-  { icon: Megaphone, name: 'Marketing' },
-  { icon: PenTool, name: 'Design & UX' }
+  { icon: Code2, name: 'Software Engineering', slug: 'software-engineer' },
+  { icon: BriefcaseBusiness, name: 'Product Manager', slug: 'product-manager' },
+  { icon: DollarSign, name: 'Finance', slug: 'finance' },
+  { icon: Cpu, name: 'Machine Learning', slug: 'machine-learning' },
+  { icon: Shield, name: 'Cybersecurity', slug: 'cybersecurity' },
+  { icon: BarChart3, name: 'Data Science', slug: 'data-scientist' },
+  { icon: Users, name: 'HR & General', slug: 'hr-general' },
+  { icon: GitBranch, name: 'DevOps', slug: 'devops' },
+  { icon: Megaphone, name: 'Marketing', slug: 'marketing' },
+  { icon: PenTool, name: 'Design & UX', slug: 'design' }
 ];
 
 const METRICS = [
@@ -93,11 +93,11 @@ const ROLE_LABELS = {
   'finance':             'Finance',
   'machine-learning':    'Machine Learning',
   'cybersecurity':       'Cybersecurity',
-  'data-science':        'Data Science',
+  'data-scientist':      'Data Science',
   'hr-general':          'HR & General',
   'devops':              'DevOps',
   'marketing':           'Marketing',
-  'design-ux':           'Design & UX'
+  'design':              'Design & UX'
 };
 
 function formatRole(role) {
@@ -129,10 +129,10 @@ function capitalize(str) {
 
 /* ── Sub-components ─────────────────────────────────────────────────── */
 
-function RoleChip({ role }) {
+function RoleChip({ role, onSelect }) {
   const Icon = role.icon;
   return (
-    <button className="landing-role-chip" type="button">
+    <button className="landing-role-chip" type="button" onClick={() => onSelect(role.slug)}>
       <span className="landing-role-icon"><Icon size={15} /></span>
       {role.name}
       <ArrowRight size={13} aria-hidden="true" className="landing-role-arrow" />
@@ -359,7 +359,7 @@ export default function LandingPage({ onStart, onProfile, onNavigate, userName }
 
               <div className="landing-role-grid" aria-label="Interview domains">
                 {ROLES.map((role) => (
-                  <RoleChip key={role.name} role={role} />
+                  <RoleChip key={role.name} role={role} onSelect={onStart} />
                 ))}
               </div>
             </section>
