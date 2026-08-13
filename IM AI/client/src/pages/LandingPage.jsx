@@ -138,7 +138,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Do I need a camera or microphone?',
-    a: 'A microphone is recommended for the most realistic experience, but you can type your answers instead. Camera-based presence feedback is optional and can be skipped.'
+    a: 'A working microphone is required — InterviewMirror AI is a voice-first mock interview experience. Make sure you\'re using Chrome or Edge and have granted microphone access before starting. Camera-based presence feedback is optional and can be skipped.'
   },
   {
     q: 'Which roles and domains are supported?',
