@@ -119,6 +119,37 @@ const STATS = [
   { value: 'PDF',       label: 'Export Reports',    color: 'magenta' }
 ];
 
+const FAQ_ITEMS = [
+  {
+    q: 'Is InterviewMirror AI free to use?',
+    a: 'Yes — you can try a full mock interview as a guest with no signup. Creating a free account unlocks unlimited practice sessions and your full interview history.'
+  },
+  {
+    q: 'Do I need to upload a resume?',
+    a: 'No, it’s optional. Uploading a resume or job description lets the AI personalize questions to your actual background, but every domain works fine without one.'
+  },
+  {
+    q: 'Is my interview data private?',
+    a: 'Yes. Your answers, scores, and any uploaded resume are tied to your account and never shown to other users. Sessions are not used to train any AI model outside this app.'
+  },
+  {
+    q: 'What happens if the AI model is unavailable?',
+    a: 'InterviewMirror AI has a deterministic fallback scoring system, so your interview keeps working end-to-end even if the AI provider has an outage.'
+  },
+  {
+    q: 'Do I need a camera or microphone?',
+    a: 'A microphone is recommended for the most realistic experience, but you can type your answers instead. Camera-based presence feedback is optional and can be skipped.'
+  },
+  {
+    q: 'Which roles and domains are supported?',
+    a: '10 domains today — Software Engineering, Product, Finance, Machine Learning, Cybersecurity, Data Science, HR & General, DevOps, Marketing, and Design/UX — each with 3 difficulty levels.'
+  },
+  {
+    q: 'Can my college or placement cell use this for the whole batch?',
+    a: 'Yes — reach out through the Support link in the footer and we’ll set up cohort access.'
+  }
+];
+
 const ROLE_LABELS = {
   'software-engineer':   'Software Engineering',
   'product-manager':     'Product Manager',
@@ -492,6 +523,17 @@ export default function LandingPage({ onStart, onProfile, onNavigate, userName }
               <strong className={`lss-val lss-val--${item.color}`}>{item.value}</strong>
               <span>{item.label}</span>
             </article>
+          ))}
+        </section>
+
+        {/* ── FAQ ── */}
+        <section className="landing-faq" aria-label="Frequently asked questions">
+          <h2>Frequently Asked Questions</h2>
+          {FAQ_ITEMS.map((item) => (
+            <details key={item.q} className="landing-faq-item">
+              <summary>{item.q}</summary>
+              <p>{item.a}</p>
+            </details>
           ))}
         </section>
 

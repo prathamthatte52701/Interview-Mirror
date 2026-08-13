@@ -934,6 +934,53 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   FAQ
+═══════════════════════════════════════════════════════════════════════════ */
+.landing-faq {
+  margin-top: 24px;
+  padding: 28px 32px;
+  border: 1px solid var(--lc-border);
+  border-radius: 18px;
+  background: var(--lc-surface);
+}
+
+.landing-faq h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--lc-text);
+}
+
+.landing-faq-item {
+  border-top: 1px solid var(--lc-border);
+  padding: 14px 0;
+}
+.landing-faq-item:first-of-type { border-top: 0; padding-top: 0; }
+
+.landing-faq-item summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--lc-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+.landing-faq-item summary::-webkit-details-marker { display: none; }
+
+.landing-faq-item summary::after {
+  content: '+';
+  float: right;
+  color: var(--lc-muted);
+}
+.landing-faq-item[open] summary::after { content: '\2212'; }
+
+.landing-faq-item p {
+  margin: 10px 0 0;
+  color: var(--lc-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    FOOTER
 ═══════════════════════════════════════════════════════════════════════════ */
 .landing-footer {
