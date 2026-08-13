@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   BarChart3,
@@ -96,6 +96,8 @@ const DIFFICULTIES = [
   { value: 'hard', label: 'Hard', desc: 'Senior+' }
 ];
 
+const STEP_IDS = ['candidateName', 'domainSection', 'personaSection', 'contextSection'];
+
 const PRESSURE_MODES = [
   { value: 'balanced', label: 'Balanced', desc: 'Normal pacing' },
   { value: 'high-pressure', label: 'High Pressure', desc: 'Intense follow-ups' }
@@ -173,7 +175,38 @@ export default function SetupPage({
   const [resumeFilename, setResumeFilename] = useState('');
   const [dragover, setDragover] = useState(false);
   const [resumeError, setResumeError] = useState('');
+  const [activeStep, setActiveStep] = useState(STEP_IDS[0]);
   const fileRef = useRef(null);
+
+  useEffect(() => {
+    const elements = STEP_IDS
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
+    if (!elements.length) return;
+
+    const visibility = new Map();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          visibility.set(entry.target.id, entry.intersectionRatio);
+        });
+        let topId = activeStep;
+        let topRatio = 0;
+        visibility.forEach((ratio, id) => {
+          if (ratio > topRatio) {
+            topRatio = ratio;
+            topId = id;
+          }
+        });
+        if (topRatio > 0) setActiveStep(topId);
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1], rootMargin: '-120px 0px -60% 0px' }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function patch(key, value) {
     setDraft((prev) => ({
@@ -250,16 +283,16 @@ export default function SetupPage({
             </div>
 
             <div className="setup-step-list" aria-label="Setup sections">
-              <a href="#candidateName" className="setup-step active">
+              <a href="#candidateName" className={`setup-step ${activeStep === 'candidateName' ? 'active' : ''}`}>
                 <User size={15} /> Candidate
               </a>
-              <a href="#domainSection" className="setup-step">
+              <a href="#domainSection" className={`setup-step ${activeStep === 'domainSection' ? 'active' : ''}`}>
                 <Briefcase size={15} /> Domain
               </a>
-              <a href="#personaSection" className="setup-step">
+              <a href="#personaSection" className={`setup-step ${activeStep === 'personaSection' ? 'active' : ''}`}>
                 <Brain size={15} /> Persona
               </a>
-              <a href="#contextSection" className="setup-step">
+              <a href="#contextSection" className={`setup-step ${activeStep === 'contextSection' ? 'active' : ''}`}>
                 <UploadCloud size={15} /> Context
               </a>
             </div>
