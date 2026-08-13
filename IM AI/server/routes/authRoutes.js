@@ -4,8 +4,9 @@ import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
 import { DATABASE_UNAVAILABLE_MESSAGE, requireDatabase } from '../config/db.js';
 import { requireAuth, safeUser } from '../middleware/auth.js';
-import { makeLimiter } from '../middleware/rateLimit.js';
+import { makeLimiter, userKeyGenerator } from '../middleware/rateLimit.js';
 import { generateRawRecoveryCode, formatRecoveryCode, normalizeRecoveryCodeInput } from '../lib/recoveryCode.js';
+import { deleteUserAndSessions } from '../lib/accountLifecycle.js';
 import logger from '../lib/logger.js';
 import City, { normalizeCityName } from '../models/City.js';
 import User from '../models/User.js';
@@ -204,7 +205,7 @@ router.post('/login', loginLimiter, requireDatabase, async (req, res) => {
     }
 
     const token = jwt.sign(
-      { userId: String(user._id), username: user.username, email: user.email },
+      { userId: String(user._id), username: user.username, email: user.email, tokenVersion: user.tokenVersion },
       process.env.JWT_SECRET,
       { expiresIn: rememberMe ? '7d' : '1h' }
     );
@@ -330,6 +331,118 @@ router.get('/me', requireAuth, (req, res) => {
     });
   }
   res.json({ success: true, user: safeUser(req.user) });
+});
+
+function requireAccountOwner(req, res) {
+  if (!req.userId) {
+    res.status(403).json({ success: false, message: 'Guests do not have an account to manage. Please sign up to unlock this.' });
+    return false;
+  }
+  return true;
+}
+
+/* ── CHANGE PASSWORD ── */
+const changePasswordLimiter = makeLimiter({ windowMs: 60 * 60 * 1000, max: 5, prefix: 'rl:password-change:', keyGenerator: userKeyGenerator });
+
+router.patch('/password', requireAuth, changePasswordLimiter, requireDatabase, async (req, res) => {
+  if (!requireAccountOwner(req, res)) return;
+  try {
+    const currentPassword = String(req.body.currentPassword || '');
+    const newPassword = String(req.body.newPassword || '');
+
+    if (!currentPassword) return res.status(400).json({ success: false, message: 'Current password is required.' });
+    if (!newPassword) return res.status(400).json({ success: false, message: 'New password is required.' });
+    if (/\s/.test(newPassword)) return res.status(400).json({ success: false, message: 'Password cannot contain spaces.' });
+
+    const pwdError = passwordPolicyError(newPassword);
+    if (pwdError) return res.status(400).json({ success: false, message: pwdError });
+
+    const user = await User.findById(req.userId);
+    const passwordMatches = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!passwordMatches) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect.' });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    logger.info('password_changed', { userId: String(user._id) });
+    res.json({ success: true, message: 'Password changed successfully.' });
+  } catch (error) {
+    logger.error('password_change_error', { userId: String(req.userId), message: error?.message || String(error) });
+    res.status(500).json({ success: false, message: 'Unable to change password. Please try again.' });
+  }
+});
+
+/* ── REGENERATE RECOVERY CODE ── */
+const recoveryCodeRegenerateLimiter = makeLimiter({ windowMs: 60 * 60 * 1000, max: 5, prefix: 'rl:recovery-regen:', keyGenerator: userKeyGenerator });
+
+router.post('/recovery-code/regenerate', requireAuth, recoveryCodeRegenerateLimiter, requireDatabase, async (req, res) => {
+  if (!requireAccountOwner(req, res)) return;
+  try {
+    const password = String(req.body.password || '');
+
+    const user = await User.findById(req.userId);
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      return res.status(401).json({ success: false, message: 'Incorrect password.' });
+    }
+
+    const rawRecoveryCode = generateRawRecoveryCode();
+    user.recoveryCodeHash = await bcrypt.hash(rawRecoveryCode, 12);
+    user.recoveryCodeCreatedAt = new Date();
+    await user.save();
+
+    logger.info('recovery_code_regenerated', { userId: String(user._id) });
+    res.json({
+      success: true,
+      message: 'Recovery code regenerated. Save it now — it will not be shown again.',
+      recoveryCode: formatRecoveryCode(rawRecoveryCode)
+    });
+  } catch (error) {
+    logger.error('recovery_code_regenerate_error', { userId: String(req.userId), message: error?.message || String(error) });
+    res.status(500).json({ success: false, message: 'Unable to regenerate recovery code. Please try again.' });
+  }
+});
+
+/* ── DELETE ACCOUNT ── */
+const deleteAccountLimiter = makeLimiter({ windowMs: 60 * 60 * 1000, max: 5, prefix: 'rl:account-delete:', keyGenerator: userKeyGenerator });
+
+router.delete('/account', requireAuth, deleteAccountLimiter, requireDatabase, async (req, res) => {
+  if (!requireAccountOwner(req, res)) return;
+  try {
+    const password = String(req.body.password || '');
+
+    const user = await User.findById(req.userId);
+    const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+    if (!passwordMatches) {
+      return res.status(401).json({ success: false, message: 'Incorrect password.' });
+    }
+
+    await deleteUserAndSessions(req.userId);
+
+    logger.info('account_deleted', { userId: String(req.userId) });
+    res.json({ success: true, message: 'Account deleted.' });
+  } catch (error) {
+    logger.error('account_delete_error', { userId: String(req.userId), message: error?.message || String(error) });
+    res.status(500).json({ success: false, message: 'Unable to delete account. Please try again.' });
+  }
+});
+
+/* ── LOGOUT EVERYWHERE ── */
+const logoutEverywhereLimiter = makeLimiter({ windowMs: 60 * 60 * 1000, max: 5, prefix: 'rl:logout-everywhere:', keyGenerator: userKeyGenerator });
+
+router.post('/logout-everywhere', requireAuth, logoutEverywhereLimiter, requireDatabase, async (req, res) => {
+  if (!requireAccountOwner(req, res)) return;
+  try {
+    await User.findByIdAndUpdate(req.userId, { $inc: { tokenVersion: 1 } });
+
+    logger.info('logout_everywhere', { userId: String(req.userId) });
+    res.json({ success: true, message: 'Logged out of all devices. Please log in again.' });
+  } catch (error) {
+    logger.error('logout_everywhere_error', { userId: String(req.userId), message: error?.message || String(error) });
+    res.status(500).json({ success: false, message: 'Unable to log out of all devices. Please try again.' });
+  }
 });
 
 export default router;

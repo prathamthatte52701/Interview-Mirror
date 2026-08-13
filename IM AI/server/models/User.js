@@ -17,7 +17,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   status: { type: String, enum: ['active', 'banned'], default: 'active' },
   recoveryCodeHash: { type: String, default: null },
-  recoveryCodeCreatedAt: { type: Date, default: null }
+  recoveryCodeCreatedAt: { type: Date, default: null },
+  tokenVersion: { type: Number, default: 0 }
 }, {
   timestamps: true
 });

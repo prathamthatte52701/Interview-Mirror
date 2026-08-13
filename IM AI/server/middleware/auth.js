@@ -68,6 +68,10 @@ export async function requireAuth(req, res, next) {
       logger.warn('banned_user_rejected', { userId: String(user._id) });
       return res.status(403).json({ success: false, message: 'Your account has been suspended.' });
     }
+    const tokenVersion = payload.tokenVersion ?? 0;
+    if (tokenVersion !== (user.tokenVersion ?? 0)) {
+      return res.status(401).json({ success: false, message: 'Session expired. Please log in again.' });
+    }
     req.userId = user._id;
     req.user = user;
     req.guestId = null;
