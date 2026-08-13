@@ -68,6 +68,11 @@ export default function InterviewPage({
   const submittingRef = useRef(false);
   const liveAnalysisRateLimitWarnedRef = useRef(false);
   const forceSubmitPendingRef = useRef(false);
+  const presenceSnapshotRef = useRef(presenceSnapshot);
+
+  useEffect(() => {
+    presenceSnapshotRef.current = presenceSnapshot;
+  }, [presenceSnapshot]);
 
   const handleEndInterview = useCallback(() => {
     window.clearTimeout(silenceTimerRef.current);
@@ -153,7 +158,7 @@ export default function InterviewPage({
       const result = await onSubmitAnswer(
         cleanAnswer,
         responseSeconds,
-        presenceSnapshot
+        presenceSnapshotRef.current
       );
 
       if (result) {
