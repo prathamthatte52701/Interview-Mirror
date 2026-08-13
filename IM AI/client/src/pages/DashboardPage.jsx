@@ -77,6 +77,8 @@ function sessionTitle(item) {
   return `${candidate}${role}`;
 }
 
+const COMPARE_METRIC_KEYS = ['overall', 'confidence', 'clarity', 'structure', 'specificity'];
+
 const SESSION_GROUP_SIZE = 10;
 
 function groupSessions(history = [], size = SESSION_GROUP_SIZE) {
@@ -127,7 +129,24 @@ export default function DashboardPage({ session, summary, history = [], loading 
   const [activeSessionBrowserId, setActiveSessionBrowserId] = useState(history?.[0]?.id || '');
   const [hasBrowsedSession, setHasBrowsedSession] = useState(false);
   const [openSessionGroups, setOpenSessionGroups] = useState({});
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareSelectedIds, setCompareSelectedIds] = useState([]);
+  const [showComparison, setShowComparison] = useState(false);
   const sessionGroups = useMemo(() => groupSessions(history), [history]);
+
+  function toggleCompareMode() {
+    setCompareMode((v) => !v);
+    setCompareSelectedIds([]);
+    setShowComparison(false);
+  }
+
+  function toggleCompareSelection(id) {
+    setCompareSelectedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= 2) return prev;
+      return [...prev, id];
+    });
+  }
 
   // Guest: clear token immediately, run countdown, redirect at 0
   useEffect(() => {
@@ -204,6 +223,24 @@ export default function DashboardPage({ session, summary, history = [], loading 
   const visualSummaryActive = summary?.visualMetricsAvailable === true;
   const selectedSummary = activeSessionBrowserItem?.summary || {};
   const selectedTranscript = activeSessionBrowserItem?.transcript || [];
+
+  const compareSessions = useMemo(
+    () => compareSelectedIds.map((id) => history.find((item) => item.id === id)).filter(Boolean),
+    [compareSelectedIds, history]
+  );
+
+  const compareRadarData = useMemo(() => {
+    if (compareSessions.length !== 2) return [];
+    const [sA, sB] = compareSessions;
+    const metricsA = sA.summary?.averageMetrics || {};
+    const metricsB = sB.summary?.averageMetrics || {};
+    const keys = Array.from(new Set([...Object.keys(metricsA), ...Object.keys(metricsB)])).filter((k) => k !== 'overall');
+    return keys.map((metric) => ({ metric, scoreA: metricsA[metric], scoreB: metricsB[metric] }));
+  }, [compareSessions]);
+
+  const compareTextSummary = compareSessions.length === 2
+    ? `Comparison radar — ${sessionTitle(compareSessions[0])} vs ${sessionTitle(compareSessions[1])}: ${compareRadarData.map((d) => `${d.metric}: ${Number.isFinite(d.scoreA) ? d.scoreA : 'not available'} vs ${Number.isFinite(d.scoreB) ? d.scoreB : 'not available'}`).join(', ')}.`
+    : '';
 
   async function handleExportPDF() {
     setExportBusy(true);
@@ -524,7 +561,14 @@ export default function DashboardPage({ session, summary, history = [], loading 
       <div className="panel dashboard-sessions-panel">
         <div className="panel-header dashboard-session-header">
           <span className="panel-title panel-title-with-icon"><History size={16} /> All Sessions</span>
-          <span className="panel-badge">{history.length}</span>
+          <span className="flex items-center gap-2">
+            <span className="panel-badge">{history.length}</span>
+            {history.length > 1 && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={toggleCompareMode}>
+                {compareMode ? 'Exit Compare Mode' : 'Compare Sessions'}
+              </button>
+            )}
+          </span>
         </div>
 
         {history.length === 0 ? (
@@ -536,7 +580,7 @@ export default function DashboardPage({ session, summary, history = [], loading 
         ) : (
           <>
             <div className="session-select-label">
-              <ListChecks size={15} /> Session groups
+              <ListChecks size={15} /> {compareMode ? 'Select up to 2 sessions to compare' : 'Session groups'}
             </div>
             <div className="session-group-list">
               {sessionGroups.map((group) => {
@@ -565,6 +609,30 @@ export default function DashboardPage({ session, summary, history = [], loading 
                       <div className="session-group-items">
                         {group.items.map((item) => {
                           const score = sessionScore(item);
+
+                          if (compareMode) {
+                            const checked = compareSelectedIds.includes(item.id);
+                            const checkboxDisabled = !checked && compareSelectedIds.length >= 2;
+                            return (
+                              <label
+                                key={item.id}
+                                className={`history-row history-row-compare ${checked ? 'active' : ''} ${checkboxDisabled ? 'disabled' : ''}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={checkboxDisabled}
+                                  onChange={() => toggleCompareSelection(item.id)}
+                                />
+                                <span>
+                                  <strong>{sessionTitle(item)}</strong>
+                                  <small>{formatDateTime(item.createdAt)} | {formatLabel(item.difficulty)}</small>
+                                </span>
+                                <em>{score == null ? '--' : score}/10</em>
+                              </label>
+                            );
+                          }
+
                           const active = activeSessionBrowserItem?.id === item.id;
                           return (
                             <button
@@ -591,7 +659,77 @@ export default function DashboardPage({ session, summary, history = [], loading 
               })}
             </div>
 
-            {activeSessionBrowserItem && (
+            {compareMode && (
+              <div className="compare-controls">
+                {compareSelectedIds.length < 2 ? (
+                  <span className="compare-hint">Select {2 - compareSelectedIds.length} more session{2 - compareSelectedIds.length === 1 ? '' : 's'} to compare.</span>
+                ) : (
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setShowComparison(true)}>
+                    Compare Selected
+                  </button>
+                )}
+              </div>
+            )}
+
+            {compareMode && showComparison && compareSessions.length === 2 && (
+              <div className="compare-panel">
+                <div className="compare-panel-header">
+                  <span className="feedback-card-title">Session Comparison</span>
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowComparison(false)}>
+                    Close comparison
+                  </button>
+                </div>
+
+                <div className="compare-columns">
+                  {compareSessions.map((item, index) => {
+                    const itemMetrics = item.summary?.averageMetrics || {};
+                    return (
+                      <div key={item.id} className="compare-column">
+                        <div className="compare-column-header">
+                          <span className="selected-session-eyebrow">Session {index + 1}</span>
+                          <h3>{sessionTitle(item)}</h3>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '4px 0' }}>
+                            {formatLabel(item.role)} · {formatDateTime(item.createdAt)}
+                          </p>
+                          <span className={hiringClass(item.summary?.hiringRecommendation)}>
+                            {item.summary?.hiringRecommendation || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="score-ring-grid compare-score-ring-grid">
+                          {COMPARE_METRIC_KEYS.map((key) => (
+                            <ScoreRing
+                              key={key}
+                              score={itemMetrics[key] ?? 0}
+                              max={10}
+                              size={68}
+                              label={key.charAt(0).toUpperCase() + key.slice(1)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {compareRadarData.length > 0 && (
+                  <div className="chart-card" style={{ marginTop: '16px' }}>
+                    <div className="panel-header"><span className="panel-title">Overlaid Performance Radar</span></div>
+                    <ResponsiveContainer width="100%" height={280}>
+                      <RadarChart data={compareRadarData}>
+                        <PolarGrid stroke="rgba(255,255,255,0.06)" />
+                        <PolarAngleAxis dataKey="metric" tick={{ fontSize: 10, fill: '#777' }} />
+                        <Radar name={sessionTitle(compareSessions[0])} dataKey="scoreA" stroke="rgba(96,165,250,0.9)" fill="rgba(96,165,250,0.18)" strokeWidth={1.5} />
+                        <Radar name={sessionTitle(compareSessions[1])} dataKey="scoreB" stroke="rgba(74,222,128,0.9)" fill="rgba(74,222,128,0.18)" strokeWidth={1.5} />
+                        <Tooltip contentStyle={{ background: '#1a1a1a', border: '1px solid #333', borderRadius: 10 }} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                    <span className="sr-only">{compareTextSummary}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!compareMode && activeSessionBrowserItem && (
               <div className="selected-session-card">
                 <div className="selected-session-title-row">
                   <div>
