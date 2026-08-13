@@ -2193,6 +2193,77 @@ small { font-size: 0.78rem; color: var(--text-muted); }
   cursor: not-allowed;
 }
 
+.session-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  margin-bottom: 12px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+}
+
+.session-search input {
+  flex: 1;
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  outline: none;
+}
+
+.history-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-row-wrap .history-row {
+  flex: 1;
+}
+
+.history-row-delete {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.16s var(--ease), color 0.16s var(--ease), border-color 0.16s var(--ease);
+}
+
+.history-row-delete:hover {
+  color: var(--danger);
+  border-color: rgba(248,113,113,0.3);
+  background: rgba(248,113,113,0.08);
+}
+
+.history-row-confirm {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.session-group-skeleton {
+  height: 42px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 37%, rgba(255,255,255,0.03) 63%);
+  background-size: 400% 100%;
+  animation: skeletonPulse 1.4s ease infinite;
+}
+
+@keyframes skeletonPulse {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
 .compare-controls {
   display: flex;
   align-items: center;
