@@ -67,6 +67,7 @@ export default function InterviewPage({
   const liveAnalysisKeyRef = useRef('');
   const submittingRef = useRef(false);
   const liveAnalysisRateLimitWarnedRef = useRef(false);
+  const forceSubmitPendingRef = useRef(false);
 
   const handleEndInterview = useCallback(() => {
     window.clearTimeout(silenceTimerRef.current);
@@ -253,10 +254,20 @@ export default function InterviewPage({
       stopListening();
       if (!busy) {
         handleSubmit(speechText.trim() || '[No response given]');
+      } else {
+        forceSubmitPendingRef.current = true;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remainingSeconds]);
+
+  useEffect(() => {
+    if (!busy && forceSubmitPendingRef.current && !submittingRef.current) {
+      forceSubmitPendingRef.current = false;
+      handleSubmit(speechText.trim() || '[No response given]');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy]);
 
   const pressureScore = useMemo(() => session?.pressureScore || 50, [session]);
   const currentRound = transcript.length + 1;
