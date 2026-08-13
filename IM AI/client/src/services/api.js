@@ -86,6 +86,8 @@ export const fetchSessions = () => request('/sessions');
 
 export const claimSession = (id) => request(`/sessions/${id}/claim`, { method: 'POST' });
 
+export const deleteSession = (id) => request(`/sessions/${id}`, { method: 'DELETE' });
+
 export const uploadResume = async (file) => {
   const fd = new FormData();
   fd.append('resume', file);
