@@ -419,7 +419,6 @@ export async function listSessions(scope) {
       candidateName: s.candidateName,
       difficulty: s.difficulty,
       summary: s.summary,
-      transcript: s.transcript || [],
       interviewMode: s.interviewMode,
       persona: s.persona
     };
