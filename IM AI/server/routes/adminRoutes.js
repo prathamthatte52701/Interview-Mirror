@@ -5,6 +5,7 @@ import { requireDatabase, getDbStatus } from '../config/db.js';
 import { requireAuth, requireAdmin, adminSafeUser } from '../middleware/auth.js';
 import { makeLimiter, getRecentRateLimitHitCount } from '../middleware/rateLimit.js';
 import { hasAI } from '../lib/aiProvider.js';
+import { deleteUserAndSessions } from '../lib/accountLifecycle.js';
 import logger from '../lib/logger.js';
 import User from '../models/User.js';
 import InterviewSession from '../models/InterviewSession.js';
@@ -132,10 +133,10 @@ router.delete('/users/:id', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Set { confirm: true } in the request body to permanently delete this user.' });
   }
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const user = await deleteUserAndSessions(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
-    logger.info('admin_action', { action: 'delete', targetUserId: req.params.id, adminId: String(req.userId) });
-    res.json({ success: true, message: 'User deleted.' });
+    logger.info('admin_action', { action: 'delete_cascade', targetUserId: req.params.id, adminId: String(req.userId) });
+    res.json({ success: true, message: 'User and their sessions deleted.' });
   } catch (error) {
     logger.error('admin_delete_error', { message: error?.message });
     res.status(500).json({ success: false, message: 'Unable to delete user.' });

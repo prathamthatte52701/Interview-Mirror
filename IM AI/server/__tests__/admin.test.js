@@ -155,6 +155,43 @@ describe('Admin panel', () => {
     expect(gone).toBeNull();
   });
 
+  it('cascades: deleting a user also deletes all of their interview sessions', async () => {
+    const admin = await createUser({ role: 'admin', email: 'admin6b@example.com' });
+    const adminToken = adminTokenFor(admin);
+    const user = await createUser({ role: 'user' });
+    const otherUser = await createUser({ role: 'user' });
+
+    await InterviewSession.create({ id: 'cascade-1', userId: user._id, role: 'software-engineer', candidateName: 'A' });
+    await InterviewSession.create({ id: 'cascade-2', userId: user._id, role: 'software-engineer', candidateName: 'A' });
+    await InterviewSession.create({ id: 'cascade-keep', userId: otherUser._id, role: 'software-engineer', candidateName: 'B' });
+
+    const res = await request(app)
+      .delete(`/api/admin/users/${user._id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ confirm: true });
+    expect(res.status).toBe(200);
+
+    const goneUser = await User.findById(user._id);
+    expect(goneUser).toBeNull();
+    const goneSessions = await InterviewSession.find({ userId: user._id });
+    expect(goneSessions.length).toBe(0);
+
+    // Sessions belonging to a different, non-deleted user must survive.
+    const untouched = await InterviewSession.findOne({ id: 'cascade-keep' });
+    expect(untouched).not.toBeNull();
+  });
+
+  it('deleting a nonexistent user id returns 404, not 500', async () => {
+    const admin = await createUser({ role: 'admin', email: 'admin6c@example.com' });
+    const adminToken = adminTokenFor(admin);
+
+    const res = await request(app)
+      .delete('/api/admin/users/000000000000000000000000')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ confirm: true });
+    expect(res.status).toBe(404);
+  });
+
   it('returns sessions belonging to multiple different users, not scoped to the admin', async () => {
     const admin = await createUser({ role: 'admin', email: 'admin7@example.com' });
     const adminToken = adminTokenFor(admin);
