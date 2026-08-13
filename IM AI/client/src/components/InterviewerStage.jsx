@@ -13,9 +13,9 @@ const PERSONA_EMOJI = {
   'friendly-recruiter': '😊',
   'strict-panelist': '🎯',
   'startup-founder': '🚀',
-  'technical-mentor': '*',
-  'senior-engineering-manager': 'EM',
-  'strict-product-interviewer': 'PI'
+  'technical-mentor': '🧑‍🏫',
+  'senior-engineering-manager': '🧑‍💻',
+  'strict-product-interviewer': '📊'
 };
 
 export default function InterviewerStage({
