@@ -25,8 +25,9 @@ export default function AnswerComposer({
   async function handleSubmit() {
     if (!answer.trim() || busy) return;
     try {
-      await onSubmit(answer.trim());
-      onClear();
+      const result = await onSubmit(answer.trim());
+      // onSubmit resolves to null (not a throw) on failure — only clear the draft on real success.
+      if (result) onClear();
     } catch {
       // The parent page displays the request error and keeps the draft answer intact.
     }

@@ -58,7 +58,9 @@ async function request(path, options = {}) {
         ? serverUnavailableMessage()
         : `Request failed: ${res.status}`;
 
-    throw new Error(err.message || err.error || fallback);
+    const error = new Error(err.message || err.error || fallback);
+    error.status = res.status;
+    throw error;
   }
   return res.json();
 }

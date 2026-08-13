@@ -6,6 +6,7 @@ import PresencePanel from '../components/PresencePanel.jsx';
 import TranscriptPanel from '../components/TranscriptPanel.jsx';
 import { useSpeech } from '../hooks/useSpeech.js';
 import { usePresence } from '../hooks/usePresence.js';
+import { useToast } from '../hooks/useToast.js';
 
 const TOTAL_SECONDS = 90;
 
@@ -28,6 +29,7 @@ export default function InterviewPage({
   onNavigate,
   busy
 }) {
+  const { showToast } = useToast();
   const {
     transcript: speechText,
     isListening,
@@ -64,6 +66,7 @@ export default function InterviewPage({
   const liveAnalysisTimerRef = useRef(null);
   const liveAnalysisKeyRef = useRef('');
   const submittingRef = useRef(false);
+  const liveAnalysisRateLimitWarnedRef = useRef(false);
 
   const handleEndInterview = useCallback(() => {
     window.clearTimeout(silenceTimerRef.current);
@@ -162,15 +165,21 @@ export default function InterviewPage({
         }
       }
 
+      // Only clear the draft answer once it has actually been submitted successfully.
+      resetTranscript();
       return result;
     } catch (err) {
       if (err?.status === 401 || err?.response?.status === 401) {
         setGuestExpiredMsg('Your demo session has expired. Sign up to continue.');
         window.setTimeout(() => onNavigate?.('/login'), 3000);
+      } else if (err?.status === 429 || err?.response?.status === 429) {
+        showToast("You've hit the answer limit for this hour — try again shortly.", 'error');
+      } else {
+        showToast("Couldn't submit your answer — check your connection and try again.", 'error');
       }
+      // Keep the answer text so the user doesn't lose what they said — do not reset transcript here.
       return null;
     } finally {
-      resetTranscript();
       submittingRef.current = false;
     }
   }
@@ -222,6 +231,13 @@ export default function InterviewPage({
         if (error?.status === 401 || error?.response?.status === 401) {
           setGuestExpiredMsg('Your demo session has expired. Sign up to continue.');
           window.setTimeout(() => onNavigate?.('/login'), 3000);
+        } else if (error?.status === 429 || error?.response?.status === 429) {
+          // Background feature — warn once per session, don't spam every ~3.2s retry cycle.
+          if (!liveAnalysisRateLimitWarnedRef.current) {
+            liveAnalysisRateLimitWarnedRef.current = true;
+            showToast('Live feedback is briefly rate-limited — your answer submissions are unaffected.', 'warning');
+          }
+          console.warn('Live answer analysis unavailable:', error?.message || error);
         } else {
           console.warn('Live answer analysis unavailable:', error?.message || error);
         }
