@@ -107,8 +107,8 @@ async function authRequest(path, options = {}) {
   let res;
   try {
     res = await fetch(`${AUTH_BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
-      ...options
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...options.headers }
     });
   } catch {
     throw new Error('Server is down. Please try again later.');

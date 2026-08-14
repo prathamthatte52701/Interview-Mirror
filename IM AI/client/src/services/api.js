@@ -26,13 +26,13 @@ async function request(path, options = {}) {
   let res;
   try {
     res = await fetch(`${API_BASE}${path}`, {
+      signal: controller.signal,
+      ...options,
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers
-      },
-      signal: controller.signal,
-      ...options
+      }
     });
   } catch (err) {
     if (err?.name === 'AbortError') {
