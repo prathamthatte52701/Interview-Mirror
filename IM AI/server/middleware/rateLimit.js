@@ -2,9 +2,8 @@ import rateLimit from 'express-rate-limit';
 import MongoStore from 'rate-limit-mongo';
 import logger from '../lib/logger.js';
 
-// ponytail: in-memory, per-process, resets on restart — fine for a single-instance
-// deploy; upgrade to a Mongo-backed counter if this ever needs to survive restarts
-// or aggregate across multiple instances.
+// In-memory, per-process health-snapshot counter (admin panel "recent rate
+// limit hits" widget) — separate from the per-route Mongo-backed limiters below.
 const HIT_WINDOW_MS = 60 * 60 * 1000;
 const recentHits = [];
 
@@ -25,16 +24,23 @@ export function userKeyGenerator(req) {
 const ipKeyGenerator = (req) => req.ip;
 
 export function makeLimiter({ windowMs, max, prefix, keyGenerator = ipKeyGenerator }) {
-  return rateLimit({
+  // The Mongo-backed store lets limits survive a server restart, but a rate
+  // limiter is a defense-in-depth control, not core correctness — if Mongo is
+  // unreachable, requests must still go through (fail open), not 500 every
+  // route wired to a limiter (this previously took down guest login, which
+  // has no other database dependency, whenever Mongo was down).
+  const store = new MongoStore({
+    uri: process.env.MONGO_URI,
+    collectionName: 'rateLimitHits',
+    expireTimeMs: windowMs,
+    errorHandler: (err) => logger.error('rate_limit_store_error', { message: err?.message, prefix })
+  });
+
+  const limiter = rateLimit({
     windowMs,
     max,
     keyGenerator: (req) => `${prefix}${keyGenerator(req)}`,
-    store: new MongoStore({
-      uri: process.env.MONGO_URI,
-      collectionName: 'rateLimitHits',
-      expireTimeMs: windowMs,
-      errorHandler: (err) => logger.error('rate_limit_store_error', { message: err?.message, prefix })
-    }),
+    store,
     handler: (req, res, _next, options) => {
       const key = keyGenerator(req);
       logger.warn('rate_limit_exceeded', {
@@ -49,4 +55,14 @@ export function makeLimiter({ windowMs, max, prefix, keyGenerator = ipKeyGenerat
       });
     }
   });
+
+  return (req, res, next) => {
+    limiter(req, res, (err) => {
+      if (err) {
+        logger.error('rate_limit_middleware_error', { message: err?.message, prefix });
+        return next();
+      }
+      next();
+    });
+  };
 }

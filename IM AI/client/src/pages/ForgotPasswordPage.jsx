@@ -130,10 +130,6 @@ export default function ForgotPasswordPage({ onNavigate }) {
       setFieldErrors((p) => ({ ...p, username: 'Username cannot contain spaces.' }));
       return;
     }
-    if (v.length >= 12) {
-      setFieldErrors((p) => ({ ...p, username: 'Username can be maximum 12 characters.' }));
-      return;
-    }
     clearFieldError('username');
   }
 
