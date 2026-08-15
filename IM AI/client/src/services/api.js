@@ -110,3 +110,35 @@ export const uploadResume = async (file) => {
   }
   return res.json();
 };
+
+export const analyzeATS = async (payload) => {
+  const token = getAuthToken();
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 30000);
+
+  let res;
+  try {
+    res = await fetch(`${API_ROOT}/ats/analyze`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('ATS server did not respond in time. Please try again.');
+    }
+    throw new Error(serverUnavailableMessage());
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.error || 'ATS analysis failed.');
+  }
+  return res.json();
+};

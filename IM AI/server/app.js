@@ -9,6 +9,7 @@ import authRoutes from './routes/authRoutes.js';
 import cityRoutes from './routes/cityRoutes.js';
 import interviewRoutes from './routes/interviewRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import atsRoutes from './routes/atsRoutes.js';
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/cities', cityRoutes);
 app.use('/api/interview', interviewRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/ats', atsRoutes);
 
 app.use((err, req, res, _next) => {
   logger.error('unhandled_error', { message: err.message, stack: err.stack, path: req.originalUrl });

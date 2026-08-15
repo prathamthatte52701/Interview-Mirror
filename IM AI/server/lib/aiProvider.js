@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import './env.js';
 import logger from './logger.js';
 
@@ -177,4 +178,55 @@ function countFillers(text) {
     const regex = new RegExp(`\\b${word.replace(/\s/g, '\\s+')}\\b`, 'gi');
     return count + (lower.match(regex) || []).length;
   }, 0);
+}
+
+// ─── ATS Analysis ─────────────────────────────────────────────────────────────
+export async function generateATSAnalysis({ resumeText, jobDescription }) {
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY is not configured on the server.');
+  }
+
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+  const systemPrompt = `You are a professional Applicant Tracking System (ATS) optimization engine.
+Analyze the candidate's resume and job description. Evaluate the compatibility score, keyword match percentage, missing keywords, and recommendations.
+
+You MUST return ONLY a valid JSON object matching this schema exactly:
+{
+  "score": <number between 0 and 100, representing ATS compatibility score>,
+  "keywordMatch": <number between 0 and 100, representing keyword coverage/match percentage>,
+  "missingKeywords": ["<keyword1>", "<keyword2>", ...],
+  "suggestions": ["<suggestion1>", "<suggestion2>", ...]
+}`;
+
+  const userPrompt = `Resume text:
+${resumeText}
+
+Job description:
+${jobDescription}`;
+
+  try {
+    const response = await groq.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2
+    });
+
+    const content = response.choices?.[0]?.message?.content || '{}';
+    const parsed = JSON.parse(content.trim());
+
+    return {
+      score: typeof parsed.score === 'number' ? parsed.score : 50,
+      keywordMatch: typeof parsed.keywordMatch === 'number' ? parsed.keywordMatch : 50,
+      missingKeywords: Array.isArray(parsed.missingKeywords) ? parsed.missingKeywords : [],
+      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : []
+    };
+  } catch (err) {
+    logger.warn('groq_ats_fallback', { message: err.message });
+    throw new Error(`ATS Analysis API error: ${err.message}`);
+  }
 }

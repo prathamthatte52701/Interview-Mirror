@@ -30,7 +30,7 @@ import {
   UserCheck,
   Users
 } from 'lucide-react';
-import { uploadResume } from '../services/api.js';
+import { uploadResume, analyzeATS } from '../services/api.js';
 
 const DOMAINS = [
   { value: 'software-engineer', label: 'Software Engineering', icon: Code2 },
@@ -179,23 +179,33 @@ export default function SetupPage({
   const fileRef = useRef(null);
   const [atsResult, setAtsResult] = useState(null);
   const [analyzingAts, setAnalyzingAts] = useState(false);
+  const [atsError, setAtsError] = useState('');
 
-  function handleAnalyzeAts() {
+  async function handleAnalyzeAts() {
+    if (!draft?.resumeText?.trim()) {
+      setAtsError('Please upload a resume or paste resume text first.');
+      return;
+    }
+    if (!draft?.jdText?.trim()) {
+      setAtsError('Please paste a job description first.');
+      return;
+    }
+
+    setAtsError('');
     setAnalyzingAts(true);
     setAtsResult(null);
-    setTimeout(() => {
-      setAtsResult({
-        score: 82,
-        keywordMatch: 78,
-        missingKeywords: ["Docker", "Kubernetes", "CI/CD"],
-        suggestions: [
-          "Add more quantified achievements",
-          "Include cloud experience",
-          "Mention Agile methodology"
-        ]
+
+    try {
+      const result = await analyzeATS({
+        resumeText: draft.resumeText,
+        jobDescription: draft.jdText
       });
+      setAtsResult(result);
+    } catch (err) {
+      setAtsError(err?.message || 'ATS analysis failed. Please try again.');
+    } finally {
       setAnalyzingAts(false);
-    }, 1000);
+    }
   }
 
   useEffect(() => {
@@ -527,6 +537,12 @@ export default function SetupPage({
                 </>
               )}
             </button>
+
+            {atsError && (
+              <p className="setup-field-error" style={{ marginTop: '12px' }}>
+                <AlertCircle size={14} /> {atsError}
+              </p>
+            )}
 
             {atsResult && (
               <div className="ats-result-card panel panel-sm mt-4" style={{ background: 'rgba(255,255,255,0.01)' }}>
