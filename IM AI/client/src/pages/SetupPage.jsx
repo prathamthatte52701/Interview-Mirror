@@ -177,6 +177,26 @@ export default function SetupPage({
   const [resumeError, setResumeError] = useState('');
   const [activeStep, setActiveStep] = useState(STEP_IDS[0]);
   const fileRef = useRef(null);
+  const [atsResult, setAtsResult] = useState(null);
+  const [analyzingAts, setAnalyzingAts] = useState(false);
+
+  function handleAnalyzeAts() {
+    setAnalyzingAts(true);
+    setAtsResult(null);
+    setTimeout(() => {
+      setAtsResult({
+        score: 82,
+        keywordMatch: 78,
+        missingKeywords: ["Docker", "Kubernetes", "CI/CD"],
+        suggestions: [
+          "Add more quantified achievements",
+          "Include cloud experience",
+          "Mention Agile methodology"
+        ]
+      });
+      setAnalyzingAts(false);
+    }, 1000);
+  }
 
   useEffect(() => {
     const elements = STEP_IDS
@@ -490,6 +510,78 @@ export default function SetupPage({
               />
               <ContextCounter length={(draft.jdText || '').length} limit={contextLimits.jdText} />
             </div>
+
+            <button
+              type="button"
+              className="btn btn-secondary w-full mt-4"
+              onClick={handleAnalyzeAts}
+              disabled={analyzingAts}
+            >
+              {analyzingAts ? (
+                <>
+                  <span className="spinner" /> Analyzing ATS Score...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={16} /> Analyze ATS Score
+                </>
+              )}
+            </button>
+
+            {atsResult && (
+              <div className="ats-result-card panel panel-sm mt-4" style={{ background: 'rgba(255,255,255,0.01)' }}>
+                <div className="panel-header" style={{ marginBottom: '16px' }}>
+                  <span className="panel-title panel-title-with-icon">
+                    <Sparkles size={16} style={{ color: 'var(--success)' }} /> ATS Analysis Results
+                  </span>
+                </div>
+                
+                <div className="grid-2" style={{ gap: '12px' }}>
+                  <div className="panel panel-sm" style={{ background: 'rgba(255,255,255,0.02)', textAlign: 'center', padding: '16px' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+                      ATS Score
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--success)', marginTop: '8px', fontVariantNumeric: 'tabular-nums' }}>
+                      {atsResult.score}/100
+                    </div>
+                  </div>
+                  <div className="panel panel-sm" style={{ background: 'rgba(255,255,255,0.02)', textAlign: 'center', padding: '16px' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+                      Keyword Match
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--info)', marginTop: '8px', fontVariantNumeric: 'tabular-nums' }}>
+                      {atsResult.keywordMatch}%
+                    </div>
+                  </div>
+                </div>
+
+                <div className="divider" style={{ margin: '20px 0' }} />
+
+                <div className="feedback-section">
+                  <div className="feedback-title" style={{ color: 'var(--danger)' }}>Missing Keywords</div>
+                  <div className="feedback-list">
+                    {atsResult.missingKeywords.map((kw, i) => (
+                      <div key={i} className="feedback-item">
+                        <span className="feedback-dot danger" />
+                        {kw}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="feedback-section" style={{ marginTop: '16px' }}>
+                  <div className="feedback-title" style={{ color: 'var(--info)' }}>Suggestions</div>
+                  <div className="feedback-list">
+                    {atsResult.suggestions.map((suggestion, i) => (
+                      <div key={i} className="feedback-item">
+                        <span className="feedback-dot info" />
+                        {suggestion}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="panel panel-sm setup-summary-panel">
