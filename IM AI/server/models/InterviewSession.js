@@ -12,6 +12,7 @@ const interviewSessionSchema = new mongoose.Schema({
   difficulty: { type: String, default: 'medium' },
   persona: { type: String, default: 'calm-senior-interviewer' },
   pressureMode: { type: String, default: 'balanced' },
+  sessionLength: { type: String, enum: ['quick', 'full'], default: 'full' },
   resumeText: { type: String, default: '' },
   jdText: { type: String, default: '' },
   askedQuestions: { type: [String], default: [] },

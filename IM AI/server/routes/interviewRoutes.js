@@ -97,10 +97,21 @@ router.get('/question-bank', (req, res) => {
 
 // ── Start Interview ─────────────────────────────────────────────────────────────
 router.post('/start', requireAuth, interviewActionLimiter, async (req, res) => {
-  const { role, candidateName, interviewMode, difficulty, persona, resumeText, jdText, pressureMode } = req.body;
+  const { role, candidateName, interviewMode, difficulty, persona, resumeText, jdText, pressureMode, sessionLength } = req.body;
   if (!String(role || '').trim() || !String(candidateName || '').trim()) {
     return res.status(400).json({ error: 'role and candidateName are required' });
   }
+
+  // Guests can only ever get Quick mode — enforced here, not just hidden in the UI.
+  // An explicit 'full' request from a guest is rejected outright; anything else
+  // (omitted, 'quick', or garbage) is silently forced to 'quick' below.
+  if (req.guestId && sessionLength === 'full') {
+    return res.status(403).json({
+      error: 'Guest sessions are Quick-mode only. Create a free account for full-length interviews.',
+      code: 'GUEST_FULL_NOT_ALLOWED'
+    });
+  }
+
   try {
     const result = await createSession({
       userId: req.userId,
@@ -112,7 +123,8 @@ router.post('/start', requireAuth, interviewActionLimiter, async (req, res) => {
       persona,
       resumeText: cleanContext(resumeText, CONTEXT_LIMITS.resumeText),
       jdText: cleanContext(jdText, CONTEXT_LIMITS.jdText),
-      pressureMode
+      pressureMode,
+      sessionLength: req.guestId ? 'quick' : sessionLength
     });
     res.status(201).json(result);
   } catch (err) {

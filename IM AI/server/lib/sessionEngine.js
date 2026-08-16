@@ -67,8 +67,21 @@ function applyPresenceSnapshot(analysis, presenceSnapshot) {
   return analysis;
 }
 
-const MAX_ADAPTIVE_FOLLOW_UPS = 2;
+// ─── Session Length Mode ───────────────────────────────────────────────────────
+// 'full' is the original, unbounded (manually-ended) behavior. 'quick' caps total
+// questions and follow-up depth for a short warm-up session.
+const MAX_ADAPTIVE_FOLLOW_UPS_FULL = 2;
+const MAX_ADAPTIVE_FOLLOW_UPS_QUICK = 1;
+const QUICK_MODE_MAX_QUESTIONS = 4;
 const LOW_SCORE_FOLLOW_UP_THRESHOLD = 4.8;
+
+export function normalizeSessionLength(value) {
+  return value === 'quick' ? 'quick' : 'full';
+}
+
+function maxAdaptiveFollowUps(session) {
+  return session.sessionLength === 'quick' ? MAX_ADAPTIVE_FOLLOW_UPS_QUICK : MAX_ADAPTIVE_FOLLOW_UPS_FULL;
+}
 
 function adaptiveFollowUpCount(session) {
   return (session.transcript || []).filter((entry) => entry.questionMeta?.isAdaptiveFollowUp).length;
@@ -80,8 +93,12 @@ function shouldAskAdaptiveFollowUp(session, analysis) {
   const currentIsFollowUp = Boolean(session.currentMeta?.isAdaptiveFollowUp);
 
   return !currentIsFollowUp
-    && adaptiveFollowUpCount(session) < MAX_ADAPTIVE_FOLLOW_UPS
+    && adaptiveFollowUpCount(session) < maxAdaptiveFollowUps(session)
     && (overall > 0 && overall <= LOW_SCORE_FOLLOW_UP_THRESHOLD || wordCount > 0 && wordCount < 25);
+}
+
+function quickModeCapReached(session) {
+  return session.sessionLength === 'quick' && session.askedQuestions.length >= QUICK_MODE_MAX_QUESTIONS;
 }
 
 function pickBankQuestion(session) {
@@ -157,6 +174,7 @@ export async function createSession(payload) {
     difficulty: payload.difficulty || 'medium',
     persona: payload.persona || 'calm-senior-interviewer',
     pressureMode: payload.pressureMode || 'balanced',
+    sessionLength: normalizeSessionLength(payload.sessionLength),
     resumeText: payload.resumeText || '',
     jdText: payload.jdText || '',
     askedQuestions: [],
@@ -323,9 +341,13 @@ export async function answerQuestion(sessionId, answer, meta = {}) {
 
   let nextQ = null;
   let nextMeta = null;
-  const askAdaptiveFollowUp = Boolean(shouldAskAdaptiveFollowUp(session, analysis) && followUp);
+  const capReached = quickModeCapReached(session);
+  const askAdaptiveFollowUp = !capReached && Boolean(shouldAskAdaptiveFollowUp(session, analysis) && followUp);
 
-  if (askAdaptiveFollowUp) {
+  if (capReached) {
+    nextQ = null;
+    nextMeta = null;
+  } else if (askAdaptiveFollowUp) {
     nextQ = followUp;
     nextMeta = {
       isAdaptiveFollowUp: true,
@@ -424,7 +446,8 @@ export async function listSessions(scope) {
       difficulty: s.difficulty,
       summary: s.summary,
       interviewMode: s.interviewMode,
-      persona: s.persona
+      persona: s.persona,
+      sessionLength: s.sessionLength
     };
   });
 }
