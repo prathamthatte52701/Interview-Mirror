@@ -24,6 +24,7 @@ const initialDraft = {
   difficulty: 'medium',
   persona: 'calm-senior-interviewer',
   pressureMode: 'balanced',
+  sessionLength: 'full',
   resumeText: '',
   jdText: ''
 };
@@ -155,6 +156,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestSessionEnded, setGuestSessionEnded] = useState(false);
+  const [guestFullBlocked, setGuestFullBlocked] = useState(false);
   const [sessionRestoreChecked, setSessionRestoreChecked] = useState(false);
   const [resumeCandidate, setResumeCandidate] = useState(null);
   const { showToast } = useToast();
@@ -392,7 +394,11 @@ export default function App() {
       localStorage.setItem(ACTIVE_SESSION_KEY, nextSession.id);
       navigateToPhase('interview');
     } catch (err) {
-      setError(err.message || 'Failed to start interview');
+      if (err.code === 'GUEST_FULL_NOT_ALLOWED') {
+        setGuestFullBlocked(true);
+      } else {
+        setError(err.message || 'Failed to start interview');
+      }
     } finally {
       setBusy(false);
     }
@@ -835,6 +841,9 @@ export default function App() {
               onStart={handleStartSession}
               busy={busy}
               contextLimits={CONTEXT_LIMITS}
+              onLogout={handleLogout}
+              guestFullBlocked={guestFullBlocked}
+              onGuestFullBlockedHandled={() => setGuestFullBlocked(false)}
             />
           )}
 

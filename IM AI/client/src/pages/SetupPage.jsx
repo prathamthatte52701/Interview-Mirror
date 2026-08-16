@@ -13,6 +13,7 @@ import {
   FileText,
   Gauge,
   Landmark,
+  Lock,
   Megaphone,
   MessageSquare,
   Palette,
@@ -25,12 +26,15 @@ import {
   Smile,
   Sparkles,
   Target,
+  Timer,
   UploadCloud,
   User,
   UserCheck,
-  Users
+  Users,
+  Zap
 } from 'lucide-react';
 import { uploadResume, analyzeATS } from '../services/api.js';
+import { useAuthStatus } from '../hooks/useAuthStatus.js';
 
 const DOMAINS = [
   { value: 'software-engineer', label: 'Software Engineering', icon: Code2 },
@@ -103,6 +107,11 @@ const PRESSURE_MODES = [
   { value: 'high-pressure', label: 'High Pressure', desc: 'Intense follow-ups' }
 ];
 
+const SESSION_LENGTHS = [
+  { value: 'quick', label: 'Quick', icon: Zap, desc: '~5-10 min, fewer questions — good for a fast warm-up' },
+  { value: 'full', label: 'Full', icon: Timer, desc: '~15-20 min, full adaptive interview' }
+];
+
 // Must match App.jsx's CONTEXT_LIMITS — passed down as the contextLimits prop.
 const DEFAULT_CONTEXT_LIMITS = { resumeText: 12000, jdText: 8000 };
 
@@ -164,13 +173,48 @@ function SelectCard({
   );
 }
 
+function GuestFullSessionModal({ onSignUp, onContinueQuick, onDismiss }) {
+  return (
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      onClick={onDismiss}
+    >
+      <div
+        className="panel modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="guest-full-modal-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div style={{ fontSize: '2rem', marginBottom: '10px' }}>⏱️</div>
+        <h3 id="guest-full-modal-title" style={{ marginBottom: '10px' }}>Full interviews need a free account</h3>
+        <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
+          Guest sessions are Quick-mode only, so you can try InterviewMirror AI in a few
+          minutes. Create a free account to unlock full-length interviews, history, and
+          detailed reports.
+        </p>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-primary" onClick={onSignUp}>Sign Up Free</button>
+          <button type="button" className="btn btn-ghost" onClick={onContinueQuick}>Continue with Quick</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SetupPage({
   draft,
   setDraft,
   onStart,
   busy,
-  contextLimits = DEFAULT_CONTEXT_LIMITS
+  contextLimits = DEFAULT_CONTEXT_LIMITS,
+  onLogout,
+  guestFullBlocked = false,
+  onGuestFullBlockedHandled
 }) {
+  const { isGuestSession } = useAuthStatus();
+  const [showGuestModal, setShowGuestModal] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);
   const [resumeFilename, setResumeFilename] = useState('');
   const [dragover, setDragover] = useState(false);
@@ -206,6 +250,29 @@ export default function SetupPage({
     } finally {
       setAnalyzingAts(false);
     }
+  }
+
+  useEffect(() => {
+    if (isGuestSession && draft.sessionLength === 'full') {
+      patch('sessionLength', 'quick');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGuestSession]);
+
+  useEffect(() => {
+    if (guestFullBlocked) {
+      setShowGuestModal(true);
+      onGuestFullBlockedHandled?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guestFullBlocked]);
+
+  function handleSelectSessionLength(value) {
+    if (isGuestSession && value === 'full') {
+      setShowGuestModal(true);
+      return;
+    }
+    patch('sessionLength', value);
   }
 
   useEffect(() => {
@@ -285,6 +352,7 @@ export default function SetupPage({
   const selectedDomain = DOMAINS.find((domain) => domain.value === draft.role);
   const selectedPersona = PERSONAS.find((persona) => persona.value === draft.persona);
   const selectedDifficulty = DIFFICULTIES.find((difficulty) => difficulty.value === draft.difficulty);
+  const selectedLength = SESSION_LENGTHS.find((length) => length.value === draft.sessionLength);
   const selectedPressure = PRESSURE_MODES.find((mode) => mode.value === draft.pressureMode);
   const canStart = Boolean(draft?.candidateName?.trim() && draft?.role && draft?.persona) && !busy;
 
@@ -367,6 +435,35 @@ export default function SetupPage({
                   >
                     <span className="domain-icon"><DomainIcon size={17} /></span>
                     <span className="domain-name">{domain.label}</span>
+                  </SelectCard>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="panel panel-sm">
+            <div className="panel-header">
+              <span className="panel-title panel-title-with-icon"><Timer size={16} /> Session Length</span>
+            </div>
+
+            <div className="difficulty-selector">
+              {SESSION_LENGTHS.map((length) => {
+                const LengthIcon = length.icon;
+                const locked = isGuestSession && length.value === 'full';
+                return (
+                  <SelectCard
+                    key={length.value}
+                    selected={draft.sessionLength === length.value}
+                    onSelect={() => handleSelectSessionLength(length.value)}
+                    ariaLabel={locked ? `${length.label} (requires a free account)` : length.label}
+                    className={`diff-btn ${draft.sessionLength === length.value ? 'selected' : ''} ${locked ? 'locked' : ''}`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <LengthIcon size={15} />
+                      {length.label}
+                      {locked && <Lock size={12} />}
+                    </div>
+                    <div className="diff-btn-sub">{length.desc}</div>
                   </SelectCard>
                 );
               })}
@@ -610,6 +707,7 @@ export default function SetupPage({
               {[
                 ['Candidate', draft?.candidateName?.trim() || 'Not set'],
                 ['Domain', selectedDomain?.label || 'Software Engineering'],
+                ['Length', selectedLength?.label || 'Full'],
                 ['Difficulty', selectedDifficulty?.label || 'Medium'],
                 ['Interviewer', selectedPersona?.label || 'Calm Senior'],
                 ['Pressure', selectedPressure?.label || 'Balanced'],
@@ -645,6 +743,17 @@ export default function SetupPage({
           )}
         </div>
       </div>
+
+      {showGuestModal && (
+        <GuestFullSessionModal
+          onSignUp={() => onLogout?.('/signup')}
+          onContinueQuick={() => {
+            patch('sessionLength', 'quick');
+            setShowGuestModal(false);
+          }}
+          onDismiss={() => setShowGuestModal(false)}
+        />
+      )}
     </div>
   );
 }

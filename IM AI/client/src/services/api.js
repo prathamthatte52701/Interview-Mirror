@@ -60,6 +60,7 @@ async function request(path, options = {}) {
 
     const error = new Error(err.message || err.error || fallback);
     error.status = res.status;
+    error.code = err.code;
     throw error;
   }
   return res.json();

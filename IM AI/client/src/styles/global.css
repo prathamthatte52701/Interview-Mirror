@@ -3011,6 +3011,14 @@ small { font-size: 0.78rem; color: var(--text-muted); }
   box-shadow: inset 0 0 0 1px rgba(34,211,238,0.08);
 }
 
+.diff-btn.locked {
+  opacity: 0.55;
+  border-style: dashed;
+}
+.diff-btn.locked .diff-btn-sub {
+  color: var(--text-subtle);
+}
+
 .diff-btn-sub {
   font-size: 0.68rem;
   color: var(--text-subtle);
@@ -5488,4 +5496,25 @@ body { background: var(--pui-bg); }
 @keyframes toastIn {
   from { opacity: 0; transform: translateY(-8px) scale(0.97); }
   to   { opacity: 1; transform: none; }
+}
+
+/* ─── Modal ──────────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 950;
+  animation: toastIn 0.16s ease;
+}
+
+.modal-panel {
+  max-width: 460px;
+  width: 100%;
+  text-align: center;
+  padding: 32px 28px;
 }
