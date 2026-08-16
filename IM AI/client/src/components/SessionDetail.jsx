@@ -1,4 +1,4 @@
-import { CalendarDays, Mic } from 'lucide-react';
+import { CalendarDays, Mic, FileSearch } from 'lucide-react';
 import MetricCard from './MetricCard.jsx';
 import { formatDateTime, formatLabel, sessionScore, sessionTitle } from '../lib/sessionFormat.js';
 
@@ -72,6 +72,31 @@ export default function SessionDetail({ session, transcript, transcriptLoading =
           </div>
         )}
       </div>
+
+      {Array.isArray(summary.resumeConsistencyFlags) && (
+        <div className="session-question-preview">
+          <div className="feedback-card-title"><FileSearch size={14} /> Worth Double-Checking</div>
+          <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+            These are AI-generated observations — review them yourself, they may not always be accurate.
+          </span>
+          {summary.resumeConsistencyFlags.length === 0 ? (
+            <div className="dashboard-empty-state history-inline-empty">
+              <FileSearch size={20} />
+              <strong>No inconsistencies found between your resume and your answers.</strong>
+            </div>
+          ) : (
+            <div className="history-answer-list">
+              {summary.resumeConsistencyFlags.map((flag, index) => (
+                <div className="history-answer-card" key={`${session.id}-flag-${index}`}>
+                  <strong>Resume says: &ldquo;{flag.resumeLine}&rdquo;</strong>
+                  <p>You said: &ldquo;{flag.answerExcerpt}&rdquo;</p>
+                  <small>{flag.explanation}</small>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="session-question-preview">
         <div className="feedback-card-title"><CalendarDays size={14} /> Questions, answers, and AI feedback</div>
