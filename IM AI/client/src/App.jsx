@@ -874,6 +874,7 @@ export default function App() {
               onLogout={handleLogout}
               guestFullBlocked={guestFullBlocked}
               onGuestFullBlockedHandled={() => setGuestFullBlocked(false)}
+              history={localHistory}
             />
           )}
 

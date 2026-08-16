@@ -5550,6 +5550,53 @@ body { background: var(--pui-bg); }
   to   { opacity: 1; transform: none; }
 }
 
+/* ─── Setup Nudge Banner ─────────────────────────────────────── */
+.setup-nudge-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+  border-color: rgba(250,204,21,0.18);
+  background: linear-gradient(145deg, rgba(250,204,21,0.06), rgba(255,255,255,0.02));
+}
+.setup-nudge-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #facc15;
+}
+.setup-nudge-text span {
+  color: var(--text-secondary);
+}
+.setup-nudge-text strong {
+  color: var(--text-primary);
+}
+.setup-nudge-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.setup-nudge-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-md);
+  border: none;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+}
+.setup-nudge-close:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.05);
+}
+
 /* ─── Modal ──────────────────────────────────────────────────── */
 .modal-backdrop {
   position: fixed;

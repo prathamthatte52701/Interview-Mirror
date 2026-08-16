@@ -19,15 +19,43 @@ import {
   Sparkles,
   Target,
   Timer,
+  TrendingDown,
   UploadCloud,
   User,
   UserCheck,
+  X,
   Zap
 } from 'lucide-react';
 import { uploadResume, analyzeATS } from '../services/api.js';
 import { useAuthStatus } from '../hooks/useAuthStatus.js';
 import { DOMAINS } from '../lib/domains.js';
 import SelectCard from '../components/SelectCard.jsx';
+
+const DIMENSION_LABELS = {
+  relevance: 'Relevance',
+  clarity: 'Clarity',
+  structure: 'Structure',
+  specificity: 'Specificity',
+  confidence: 'Confidence',
+  delivery: 'Delivery',
+  roleFit: 'Role Fit'
+};
+const DIMENSION_KEYS = Object.keys(DIMENSION_LABELS);
+
+function findWeakestDimensionNudge(history) {
+  const lastCompleted = (history || []).find((item) => item.endedAt && item.summary?.averageMetrics);
+  if (!lastCompleted) return null;
+
+  const metrics = lastCompleted.summary.averageMetrics;
+  const entries = DIMENSION_KEYS
+    .map((key) => [key, metrics[key]])
+    .filter(([, value]) => Number.isFinite(value));
+  if (entries.length < DIMENSION_KEYS.length) return null;
+
+  entries.sort((a, b) => a[1] - b[1]);
+  const [weakestKey] = entries[0];
+  return { dimension: weakestKey, domain: lastCompleted.role };
+}
 
 const PERSONAS = [
   {
@@ -155,10 +183,19 @@ export default function SetupPage({
   contextLimits = DEFAULT_CONTEXT_LIMITS,
   onLogout,
   guestFullBlocked = false,
-  onGuestFullBlockedHandled
+  onGuestFullBlockedHandled,
+  history = []
 }) {
   const { isGuestSession } = useAuthStatus();
   const [showGuestModal, setShowGuestModal] = useState(false);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const weakestDimensionNudge = findWeakestDimensionNudge(history);
+
+  function handlePracticeNudge() {
+    if (!weakestDimensionNudge) return;
+    patch('role', weakestDimensionNudge.domain);
+    setNudgeDismissed(true);
+  }
   const [uploadingResume, setUploadingResume] = useState(false);
   const [resumeFilename, setResumeFilename] = useState('');
   const [dragover, setDragover] = useState(false);
@@ -312,6 +349,30 @@ export default function SetupPage({
           </p>
         </div>
       </div>
+
+      {weakestDimensionNudge && !nudgeDismissed && (
+        <div className="panel panel-sm setup-nudge-banner">
+          <div className="setup-nudge-text">
+            <TrendingDown size={16} />
+            <span>
+              Last time, <strong>{DIMENSION_LABELS[weakestDimensionNudge.dimension]}</strong> was your weakest area. Want to focus on that again?
+            </span>
+          </div>
+          <div className="setup-nudge-actions">
+            <button type="button" className="btn btn-primary btn-sm" onClick={handlePracticeNudge}>
+              Practice this domain again
+            </button>
+            <button
+              type="button"
+              className="setup-nudge-close"
+              aria-label="Dismiss"
+              onClick={() => setNudgeDismissed(true)}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="setup-layout">
         <aside className="setup-side-panel">
