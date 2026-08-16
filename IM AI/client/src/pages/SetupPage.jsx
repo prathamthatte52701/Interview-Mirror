@@ -123,10 +123,12 @@ const SESSION_LENGTHS = [
 // Must match App.jsx's CONTEXT_LIMITS — passed down as the contextLimits prop.
 const DEFAULT_CONTEXT_LIMITS = { resumeText: 12000, jdText: 8000 };
 
+const TRIM_NOTICE = '\n\n[Context trimmed to keep interview setup responsive.]';
+
 function normalizePastedContext(value, limit) {
   const text = String(value || '');
   if (text.length <= limit) return text;
-  return `${text.slice(0, limit)}\n\n[Context trimmed to keep interview setup responsive.]`;
+  return `${text.slice(0, Math.max(0, limit - TRIM_NOTICE.length))}${TRIM_NOTICE}`;
 }
 
 function ContextCounter({ length, limit }) {
@@ -585,7 +587,11 @@ export default function SetupPage({
                 ref={fileRef}
                 type="file"
                 accept=".txt,.pdf,.doc,.docx"
-                onChange={(event) => handleResumeFile(event.target.files?.[0])}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  handleResumeFile(file);
+                }}
               />
             </div>
 
