@@ -68,6 +68,7 @@ export default function InterviewPage({
   const submittingRef = useRef(false);
   const liveAnalysisRateLimitWarnedRef = useRef(false);
   const forceSubmitPendingRef = useRef(false);
+  const forceSubmitQuestionRef = useRef(null);
   const presenceSnapshotRef = useRef(presenceSnapshot);
   const expiredDialogRef = useRef(null);
 
@@ -280,6 +281,7 @@ export default function InterviewPage({
         handleSubmit(speechText.trim() || '[No response given]');
       } else {
         forceSubmitPendingRef.current = true;
+        forceSubmitQuestionRef.current = currentQuestion;
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -288,7 +290,14 @@ export default function InterviewPage({
   useEffect(() => {
     if (!busy && forceSubmitPendingRef.current && !submittingRef.current) {
       forceSubmitPendingRef.current = false;
-      handleSubmit(speechText.trim() || '[No response given]');
+      // The busy submission that was in flight may have already advanced to the next
+      // question by the time this fires. Only force-submit if we're still on the same
+      // question the timeout actually belonged to — otherwise this would fire a bogus
+      // "[No response given]" at the brand new question instead of a no-op.
+      if (forceSubmitQuestionRef.current === currentQuestion) {
+        handleSubmit(speechText.trim() || '[No response given]');
+      }
+      forceSubmitQuestionRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busy]);
