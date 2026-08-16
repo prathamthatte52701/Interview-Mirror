@@ -118,6 +118,7 @@ export default function DashboardPage({ session, summary, history = [], loading 
   }, [isGuestSession, countdown, onLogout]);
 
   const metrics = summary?.averageMetrics || {};
+  const scoreDeltas = summary?.scoreDeltas || null;
   const radarData = Object.entries(metrics)
     .filter(([k]) => k !== 'overall')
     .map(([metric, score]) => ({ metric, score }));
@@ -371,10 +372,10 @@ export default function DashboardPage({ session, summary, history = [], loading 
       {/* Score rings */}
       <div className="score-ring-grid">
         <ScoreRing score={metrics.overall     ?? 0} max={10} label="Overall"     />
-        <ScoreRing score={metrics.confidence  ?? 0} max={10} label="Confidence"  />
-        <ScoreRing score={metrics.clarity     ?? 0} max={10} label="Clarity"     />
-        <ScoreRing score={metrics.structure   ?? 0} max={10} label="Structure"   />
-        <ScoreRing score={metrics.specificity ?? 0} max={10} label="Specificity" />
+        <ScoreRing score={metrics.confidence  ?? 0} max={10} label="Confidence"  delta={scoreDeltas?.confidence}  />
+        <ScoreRing score={metrics.clarity     ?? 0} max={10} label="Clarity"     delta={scoreDeltas?.clarity}     />
+        <ScoreRing score={metrics.structure   ?? 0} max={10} label="Structure"   delta={scoreDeltas?.structure}   />
+        <ScoreRing score={metrics.specificity ?? 0} max={10} label="Specificity" delta={scoreDeltas?.specificity} />
       </div>
 
       {/* Presence scores row */}

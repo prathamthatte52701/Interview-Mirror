@@ -1,6 +1,6 @@
 import { useId } from 'react';
 
-export default function ScoreRing({ score = 0, max = 10, size = 90, label = '', strokeWidth = 5 }) {
+export default function ScoreRing({ score = 0, max = 10, size = 90, label = '', strokeWidth = 5, delta }) {
   const safeScore = Number(score) || 0;
   const pct = Math.min(1, Math.max(0, safeScore / max));
   const r = (size - strokeWidth * 2) / 2;
@@ -70,6 +70,11 @@ export default function ScoreRing({ score = 0, max = 10, size = 90, label = '', 
         </div>
       </div>
       {label && <div className="score-ring-label">{label}</div>}
+      {Number.isFinite(delta) && (
+        <div className={`score-ring-delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat'}`}>
+          {delta > 0 ? '↑' : delta < 0 ? '↓' : '→'} {Math.abs(delta).toFixed(1)}
+        </div>
+      )}
     </div>
   );
 }
