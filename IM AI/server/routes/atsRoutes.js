@@ -1,10 +1,19 @@
 import express from 'express';
 import { generateATSAnalysis } from '../lib/aiProvider.js';
 import logger from '../lib/logger.js';
+import { requireAuth } from '../middleware/auth.js';
+import { makeLimiter, userKeyGenerator } from '../middleware/rateLimit.js';
 
 const router = express.Router();
 
-router.post('/analyze', async (req, res) => {
+const atsLimiter = makeLimiter({
+  windowMs: 60 * 60 * 1000,
+  max: 15,
+  prefix: 'rl:ats:',
+  keyGenerator: userKeyGenerator
+});
+
+router.post('/analyze', requireAuth, atsLimiter, async (req, res) => {
   try {
     const { resumeText, jobDescription } = req.body;
 

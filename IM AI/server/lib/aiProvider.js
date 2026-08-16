@@ -1,5 +1,4 @@
 import { GoogleGenAI } from '@google/genai';
-import Groq from 'groq-sdk';
 import './env.js';
 import logger from './logger.js';
 
@@ -182,42 +181,41 @@ function countFillers(text) {
 
 // ─── ATS Analysis ─────────────────────────────────────────────────────────────
 export async function generateATSAnalysis({ resumeText, jobDescription }) {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error('GROQ_API_KEY is not configured on the server.');
+  if (!ai) {
+    throw new Error('AI provider is not configured on the server.');
   }
 
-  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-
-  const systemPrompt = `You are a professional Applicant Tracking System (ATS) optimization engine.
+  const systemInstruction = `You are a professional Applicant Tracking System (ATS) optimization engine.
 Analyze the candidate's resume and job description. Evaluate the compatibility score, keyword match percentage, missing keywords, and recommendations.
 
-You MUST return ONLY a valid JSON object matching this schema exactly:
+Return ONLY valid JSON with this exact schema:
 {
-  "score": <number between 0 and 100, representing ATS compatibility score>,
-  "keywordMatch": <number between 0 and 100, representing keyword coverage/match percentage>,
+  "score": <number 0-100, ATS compatibility score>,
+  "keywordMatch": <number 0-100, keyword coverage/match percentage>,
   "missingKeywords": ["<keyword1>", "<keyword2>", ...],
   "suggestions": ["<suggestion1>", "<suggestion2>", ...]
 }`;
 
-  const userPrompt = `Resume text:
-${resumeText}
+  const prompt = `Resume text:
+${resumeText.slice(0, 6000)}
 
 Job description:
-${jobDescription}`;
+${jobDescription.slice(0, 4000)}`;
 
   try {
-    const response = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.2
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+        temperature: 0.2
+      }
     });
 
-    const content = response.choices?.[0]?.message?.content || '{}';
-    const parsed = JSON.parse(content.trim());
+    const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(clean);
 
     return {
       score: typeof parsed.score === 'number' ? parsed.score : 50,
@@ -226,7 +224,7 @@ ${jobDescription}`;
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : []
     };
   } catch (err) {
-    logger.warn('groq_ats_fallback', { message: err.message });
+    logger.warn('ats_analysis_fallback', { message: err.message });
     throw new Error(`ATS Analysis API error: ${err.message}`);
   }
 }
