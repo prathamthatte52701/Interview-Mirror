@@ -2552,6 +2552,32 @@ small { font-size: 0.78rem; color: var(--text-muted); }
   letter-spacing: 0.12em;
 }
 
+.profile-stat-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.profile-average-window-select {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--r-sm);
+  color: var(--text-secondary);
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.profile-stat-note {
+  color: var(--text-subtle);
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
 .profile-stat-card strong {
   color: var(--white);
   font-size: 0.94rem;

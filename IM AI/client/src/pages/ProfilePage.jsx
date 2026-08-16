@@ -39,10 +39,31 @@ function lastInterviewDate(history) {
   return formatDateTime(sorted[0]);
 }
 
-function averageScore(history) {
-  const scores = scoredSessions(history).map((item) => item.summary.averageMetrics.overall);
-  if (!scores.length) return 'Not available';
-  return `${(scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1)}/10`;
+const AVERAGE_WINDOW_OPTIONS = [
+  { value: 3, label: 'Last 3' },
+  { value: 5, label: 'Last 5' },
+  { value: 10, label: 'Last 10' },
+  { value: 20, label: 'Last 20' },
+  { value: 50, label: 'Last 50' },
+  { value: 100, label: 'Last 100' },
+  { value: 'all', label: 'All Time' }
+];
+
+function windowedAverageScore(history, window) {
+  const scored = [...scoredSessions(history)].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+  if (!scored.length) return { display: 'Not available', note: '' };
+
+  const windowed = window === 'all' ? scored : scored.slice(0, window);
+  const scores = windowed.map((item) => item.summary.averageMetrics.overall);
+  const display = `${(scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1)}/10`;
+
+  const note = window !== 'all' && windowed.length < window
+    ? `Showing average of your ${windowed.length} session${windowed.length === 1 ? '' : 's'} (fewer than ${window} available).`
+    : '';
+
+  return { display, note };
 }
 
 function sanitizeFilenamePart(value) {
@@ -492,7 +513,12 @@ export default function ProfilePage({ user, history = [], onLogout, onStart }) {
   const initial = primaryName?.[0]?.toUpperCase() || 'I';
   const since = user?.createdAt ? formatDateTime(user.createdAt) : null;
   const [reportBusy, setReportBusy] = useState(false);
+  const [averageWindow, setAverageWindow] = useState('all');
   const hasCompletedSessions = scoredSessions(history).length > 0;
+  const windowedAverage = useMemo(
+    () => windowedAverageScore(history, averageWindow),
+    [history, averageWindow]
+  );
 
   async function handleDownloadReport() {
     if (!hasCompletedSessions || reportBusy) return;
@@ -544,8 +570,28 @@ export default function ProfilePage({ user, history = [], onLogout, onStart }) {
           </div>
           <div className="profile-stat-card">
             <ShieldCheck size={18} />
-            <span>Average score</span>
-            <strong>{averageScore(history)}</strong>
+            <div className="profile-stat-header-row">
+              <span>Average score</span>
+              {hasCompletedSessions && (
+                <select
+                  className="profile-average-window-select"
+                  value={averageWindow}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    setAverageWindow(raw === 'all' ? 'all' : Number(raw));
+                  }}
+                  aria-label="Average score window"
+                >
+                  {AVERAGE_WINDOW_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <strong>{windowedAverage.display}</strong>
+            {windowedAverage.note && (
+              <small className="profile-stat-note">{windowedAverage.note}</small>
+            )}
           </div>
         </section>
 
