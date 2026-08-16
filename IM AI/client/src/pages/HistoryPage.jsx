@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { History, ListChecks } from 'lucide-react';
 import { useSessionHistory } from '../hooks/useSessionHistory.js';
 import { useAuthStatus } from '../hooks/useAuthStatus.js';
@@ -5,11 +6,16 @@ import SessionList from '../components/SessionList.jsx';
 import SessionDetail from '../components/SessionDetail.jsx';
 import GuestLockScreen from '../components/GuestLockScreen.jsx';
 
-export default function HistoryPage({ history = [], loading = false, onStart, onLogout, onSessionDeleted }) {
+export default function HistoryPage({ history = [], loading = false, onStart, onLogout, onSessionDeleted, initialSelectedId = '', onInitialSelectionConsumed }) {
   const { isGuestSession } = useAuthStatus();
   const {
     sessions, selectedId, selectSession, selectedSession, selectedTranscript, transcriptLoading, deleteSession, toggleBookmark
-  } = useSessionHistory(history, loading, onSessionDeleted);
+  } = useSessionHistory(history, loading, onSessionDeleted, initialSelectedId);
+
+  useEffect(() => {
+    if (initialSelectedId) onInitialSelectionConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isGuestSession) {
     return (

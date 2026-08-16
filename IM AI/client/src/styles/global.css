@@ -2374,6 +2374,23 @@ small { font-size: 0.78rem; color: var(--text-muted); }
   cursor: default;
 }
 
+.bookmark-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.76rem;
+  color: var(--text-subtle);
+  text-transform: capitalize;
+}
+.bookmark-card-meta .btn {
+  margin-left: auto;
+  text-transform: none;
+}
+
 .history-answer-card p {
   margin: 8px 0;
   color: var(--text-secondary);

@@ -20,9 +20,9 @@ export function groupSessions(sessions = [], size = SESSION_GROUP_SIZE) {
   return groups;
 }
 
-export function useSessionHistory(history = [], loading = false, onDeleted) {
+export function useSessionHistory(history = [], loading = false, onDeleted, initialSelectedId = '') {
   const [sessions, setSessions] = useState(history);
-  const [selectedId, setSelectedId] = useState(history[0]?.id || '');
+  const [selectedId, setSelectedId] = useState(initialSelectedId || history[0]?.id || '');
   const [transcriptCache, setTranscriptCache] = useState({});
   const [transcriptLoading, setTranscriptLoading] = useState(false);
 

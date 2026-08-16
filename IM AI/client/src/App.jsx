@@ -8,6 +8,7 @@ import SetupPage from './pages/SetupPage.jsx';
 import InterviewPage from './pages/InterviewPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
+import BookmarksPage from './pages/BookmarksPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
@@ -64,6 +65,7 @@ const PROTECTED_ROUTES = new Set([
   '/interview',
   '/dashboard',
   '/history',
+  '/bookmarks',
   '/profile',
   ...ADMIN_ROUTES
 ]);
@@ -79,6 +81,7 @@ const PHASE_LABELS = {
   interview: 'Interview',
   dashboard: 'Results',
   history: 'History',
+  bookmarks: 'Bookmarks',
   profile: 'Profile'
 };
 
@@ -113,6 +116,11 @@ const icons = {
       <polyline points="12 6 12 12 16 14" />
     </svg>
   ),
+  bookmarks: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+    </svg>
+  ),
   profile: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <circle cx="12" cy="8" r="4" />
@@ -130,6 +138,7 @@ function phaseFromPath(path) {
   if (path === '/interview') return 'interview';
   if (path === '/dashboard') return 'dashboard';
   if (path === '/history') return 'history';
+  if (path === '/bookmarks') return 'bookmarks';
   if (path === '/profile') return 'profile';
   return 'setup';
 }
@@ -157,6 +166,7 @@ export default function App() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [guestSessionEnded, setGuestSessionEnded] = useState(false);
   const [guestFullBlocked, setGuestFullBlocked] = useState(false);
+  const [historyTargetSessionId, setHistoryTargetSessionId] = useState('');
   const [sessionRestoreChecked, setSessionRestoreChecked] = useState(false);
   const [resumeCandidate, setResumeCandidate] = useState(null);
   const { showToast } = useToast();
@@ -462,6 +472,11 @@ export default function App() {
     setLocalHistory((prev) => prev.filter((item) => item.id !== id));
   }
 
+  function handleViewBookmarkedSession(sessionId) {
+    setHistoryTargetSessionId(sessionId);
+    navigate('/history');
+  }
+
   function handleRestart() {
     setSession(null);
     setCurrentQ('');
@@ -751,6 +766,13 @@ export default function App() {
             <span className="nav-count">{localHistory.length}</span>
           </button>
           <button
+            className={`nav-item ${phase === 'bookmarks' ? 'active' : ''}`}
+            onClick={() => navigate('/bookmarks')}
+          >
+            <span className="nav-icon">{icons.bookmarks}</span>
+            Bookmarks
+          </button>
+          <button
             className={`nav-item ${phase === 'profile' ? 'active' : ''}`}
             onClick={() => navigate('/profile')}
           >
@@ -881,7 +903,13 @@ export default function App() {
               onStart={handleRestart}
               onLogout={handleLogout}
               onSessionDeleted={handleSessionDeleted}
+              initialSelectedId={historyTargetSessionId}
+              onInitialSelectionConsumed={() => setHistoryTargetSessionId('')}
             />
+          )}
+
+          {phase === 'bookmarks' && (
+            <BookmarksPage onViewSession={handleViewBookmarkedSession} />
           )}
 
           {phase === 'profile' && (
