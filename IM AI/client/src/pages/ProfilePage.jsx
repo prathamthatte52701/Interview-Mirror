@@ -362,8 +362,9 @@ function RecoveryCodeSection() {
 function LogoutEverywhereSection({ onLogout }) {
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
-  async function handleClick() {
+  async function handleConfirm() {
     setBusy(true);
     try {
       await logoutEverywhere();
@@ -382,9 +383,20 @@ function LogoutEverywhereSection({ onLogout }) {
         <p>Invalidates every session token issued for your account, including this one.</p>
       </div>
       <div className="profile-actions">
-        <button type="button" className="btn btn-secondary" onClick={handleClick} disabled={busy}>
-          {busy ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <><LogOut size={16} /> Log out everywhere</>}
-        </button>
+        {confirming ? (
+          <>
+            <button type="button" className="btn btn-ghost" onClick={() => setConfirming(false)} disabled={busy}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-danger" onClick={handleConfirm} disabled={busy}>
+              {busy ? <span className="spinner" style={{ width: 14, height: 14 }} /> : 'Yes, log out everywhere'}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn btn-secondary" onClick={() => setConfirming(true)} disabled={busy}>
+            <LogOut size={16} /> Log out everywhere
+          </button>
+        )}
       </div>
     </section>
   );
