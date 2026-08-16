@@ -8,7 +8,7 @@ import GuestLockScreen from '../components/GuestLockScreen.jsx';
 export default function HistoryPage({ history = [], loading = false, onStart, onLogout, onSessionDeleted }) {
   const { isGuestSession } = useAuthStatus();
   const {
-    sessions, selectedId, selectSession, selectedSession, selectedTranscript, transcriptLoading, deleteSession
+    sessions, selectedId, selectSession, selectedSession, selectedTranscript, transcriptLoading, deleteSession, toggleBookmark
   } = useSessionHistory(history, loading, onSessionDeleted);
 
   if (isGuestSession) {
@@ -64,6 +64,7 @@ export default function HistoryPage({ history = [], loading = false, onStart, on
             loading={loading}
             eyebrow="History detail"
             className="history-detail-panel"
+            onToggleBookmark={toggleBookmark}
           />
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { fetchSession, deleteSession as deleteSessionRequest } from '../services/api.js';
+import { fetchSession, deleteSession as deleteSessionRequest, toggleBookmark as toggleBookmarkRequest } from '../services/api.js';
 
 const SESSION_GROUP_SIZE = 10;
 
@@ -78,6 +78,27 @@ export function useSessionHistory(history = [], loading = false, onDeleted) {
     onDeleted?.(id);
   }, [onDeleted]);
 
+  const toggleBookmark = useCallback(async (sessionId, questionIndex, bookmarked) => {
+    function setEntryBookmarked(value) {
+      setTranscriptCache((prev) => {
+        const current = prev[sessionId];
+        if (!current) return prev;
+        return {
+          ...prev,
+          [sessionId]: current.map((entry, i) => (i === questionIndex ? { ...entry, bookmarked: value } : entry))
+        };
+      });
+    }
+
+    setEntryBookmarked(bookmarked);
+    try {
+      await toggleBookmarkRequest(sessionId, questionIndex, bookmarked);
+    } catch (err) {
+      setEntryBookmarked(!bookmarked);
+      throw err;
+    }
+  }, []);
+
   return {
     sessions,
     selectedId,
@@ -86,6 +107,7 @@ export function useSessionHistory(history = [], loading = false, onDeleted) {
     selectedTranscript,
     transcriptLoading: transcriptLoading && !selectedTranscript,
     deleteSession,
+    toggleBookmark,
     loading
   };
 }

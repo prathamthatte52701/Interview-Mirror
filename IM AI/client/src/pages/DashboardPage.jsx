@@ -78,7 +78,7 @@ export default function DashboardPage({ session, summary, history = [], loading 
   const [showComparison, setShowComparison] = useState(false);
 
   const {
-    sessions, selectedId, selectSession, selectedSession, selectedTranscript, transcriptLoading, deleteSession
+    sessions, selectedId, selectSession, selectedSession, selectedTranscript, transcriptLoading, deleteSession, toggleBookmark
   } = useSessionHistory(history, loading, onSessionDeleted);
 
   function handleSelectSession(id) {
@@ -647,6 +647,7 @@ export default function DashboardPage({ session, summary, history = [], loading 
               transcript={selectedTranscript}
               transcriptLoading={transcriptLoading}
               loading={loading}
+              onToggleBookmark={toggleBookmark}
             />
           </>
         )}

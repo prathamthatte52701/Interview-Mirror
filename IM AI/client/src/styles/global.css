@@ -2339,6 +2339,41 @@ small { font-size: 0.78rem; color: var(--text-muted); }
   line-height: 1.55;
 }
 
+.history-answer-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bookmark-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-subtle);
+  cursor: pointer;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.bookmark-toggle:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.05);
+}
+.bookmark-toggle.active {
+  color: #facc15;
+  border-color: rgba(250,204,21,0.28);
+  background: rgba(250,204,21,0.08);
+}
+.bookmark-toggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .history-answer-card p {
   margin: 8px 0;
   color: var(--text-secondary);

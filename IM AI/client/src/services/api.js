@@ -89,6 +89,14 @@ export const claimSession = (id) => request(`/sessions/${id}/claim`, { method: '
 
 export const deleteSession = (id) => request(`/sessions/${id}`, { method: 'DELETE' });
 
+export const toggleBookmark = (sessionId, questionIndex, bookmarked) =>
+  request(`/sessions/${sessionId}/questions/${questionIndex}/bookmark`, {
+    method: 'PATCH',
+    body: JSON.stringify({ bookmarked })
+  });
+
+export const fetchBookmarks = () => request('/bookmarks');
+
 export const uploadResume = async (file) => {
   const fd = new FormData();
   fd.append('resume', file);

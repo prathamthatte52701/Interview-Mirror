@@ -1,6 +1,37 @@
-import { CalendarDays, Mic, FileSearch } from 'lucide-react';
+import { useState } from 'react';
+import { CalendarDays, Mic, FileSearch, Star } from 'lucide-react';
 import MetricCard from './MetricCard.jsx';
 import { formatDateTime, formatLabel, sessionScore, sessionTitle } from '../lib/sessionFormat.js';
+import { showToast } from '../hooks/useToast.js';
+
+function BookmarkToggle({ bookmarked, onToggle }) {
+  const [busy, setBusy] = useState(false);
+
+  async function handleClick() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await onToggle();
+    } catch {
+      showToast('Could not update bookmark. Please try again.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className={`bookmark-toggle ${bookmarked ? 'active' : ''}`}
+      onClick={handleClick}
+      disabled={busy}
+      aria-pressed={bookmarked}
+      aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark this question'}
+    >
+      <Star size={15} fill={bookmarked ? 'currentColor' : 'none'} />
+    </button>
+  );
+}
 
 function DetailRow({ label, value }) {
   return (
@@ -11,7 +42,7 @@ function DetailRow({ label, value }) {
   );
 }
 
-export default function SessionDetail({ session, transcript, transcriptLoading = false, loading = false, eyebrow = 'Selected session', className = '' }) {
+export default function SessionDetail({ session, transcript, transcriptLoading = false, loading = false, eyebrow = 'Selected session', className = '', onToggleBookmark }) {
   const rootClass = `panel selected-session-card${className ? ` ${className}` : ''}`;
 
   if (loading) {
@@ -109,7 +140,15 @@ export default function SessionDetail({ session, transcript, transcriptLoading =
           <div className="history-answer-list">
             {transcript.map((entry, index) => (
               <div className="history-answer-card" key={`${session.id}-${index}`}>
-                <strong>{entry.question || 'Question not available'}</strong>
+                <div className="history-answer-card-title-row">
+                  <strong>{entry.question || 'Question not available'}</strong>
+                  {onToggleBookmark && (
+                    <BookmarkToggle
+                      bookmarked={Boolean(entry.bookmarked)}
+                      onToggle={() => onToggleBookmark(session.id, index, !entry.bookmarked)}
+                    />
+                  )}
+                </div>
                 <p>{entry.answer || 'User answer not available'}</p>
                 <small>
                   AI feedback: {entry.analysis?.rewrite || entry.analysis?.idealAnswer || entry.analysis?.strengths?.[0] || 'Not available'}
