@@ -252,6 +252,29 @@ export default function DashboardPage({ session, summary, history = [], loading 
         y += 7;
       }
 
+      const exportFlags = exportSummary?.resumeConsistencyFlags;
+      if (Array.isArray(exportFlags) && exportFlags.length > 0) {
+        y += 5;
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Worth Double-Checking (AI-generated, review yourself)', 20, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setTextColor(180,180,180);
+        exportFlags.forEach((flag) => {
+          doc.setFont('helvetica', 'bold');
+          doc.text(`Resume: "${flag.resumeLine}"`, 24, y);
+          y += 6;
+          doc.setFont('helvetica', 'normal');
+          const answerLines = doc.splitTextToSize(`You said: "${flag.answerExcerpt}"`, 164);
+          answerLines.forEach(l => { doc.text(l, 24, y); y += 6; });
+          const explanationLines = doc.splitTextToSize(flag.explanation || '', 164);
+          explanationLines.forEach(l => { doc.text(l, 24, y); y += 6; });
+          y += 3;
+        });
+      }
+
       if (exportVerdict) {
         y += 8;
         doc.setTextColor(255,255,255);
