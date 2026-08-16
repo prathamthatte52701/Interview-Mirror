@@ -451,3 +451,44 @@ export async function listSessions(scope) {
     };
   });
 }
+
+// ─── Bookmarks ─────────────────────────────────────────────────────────────────
+export async function toggleBookmark(sessionId, questionIndex, bookmarked, scope) {
+  const idx = Number(questionIndex);
+  if (!Number.isInteger(idx) || idx < 0) throw new Error('Session not found');
+
+  const updated = await InterviewSession.findOneAndUpdate(
+    { id: sessionId, ...buildScopeFilter(scope), [`transcript.${idx}`]: { $exists: true } },
+    { $set: { [`transcript.${idx}.bookmarked`]: Boolean(bookmarked) } },
+    { returnDocument: 'after' }
+  );
+  if (!updated) throw new Error('Session not found');
+  return serializeSession(updated);
+}
+
+export async function listBookmarks(scope) {
+  const sessions = await InterviewSession.find({
+    ...buildScopeFilter(scope),
+    'transcript.bookmarked': true
+  }).sort({ createdAt: -1 });
+
+  const bookmarks = [];
+  sessions.forEach((sessionDoc) => {
+    const s = serializeSession(sessionDoc);
+    (s.transcript || []).forEach((entry, questionIndex) => {
+      if (entry.bookmarked) {
+        bookmarks.push({
+          sessionId: s.id,
+          questionIndex,
+          question: entry.question,
+          answer: entry.answer,
+          role: s.role,
+          difficulty: s.difficulty,
+          candidateName: s.candidateName,
+          sessionCreatedAt: s.createdAt
+        });
+      }
+    });
+  });
+  return bookmarks;
+}

@@ -3,7 +3,8 @@ import multer from 'multer';
 import {
   createSession, answerQuestion, endSession,
   getSession, listSessions, liveAnalyzeAnswer,
-  deleteSession, claimSession
+  deleteSession, claimSession,
+  toggleBookmark, listBookmarks
 } from '../lib/sessionEngine.js';
 import { questionBank } from '../lib/questionBank.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -64,6 +65,30 @@ router.delete('/sessions/:id', requireAuth, async (req, res) => {
   } catch (err) {
     if (err.message === 'Session not found') return res.status(404).json({ error: err.message });
     logger.error('interview_session_delete_error', { message: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/bookmarks', requireAuth, async (req, res) => {
+  try {
+    res.json(await listBookmarks({ userId: req.userId, guestId: req.guestId }));
+  } catch (err) {
+    logger.error('interview_bookmarks_list_error', { message: err.message });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/sessions/:id/questions/:questionIndex/bookmark', requireAuth, async (req, res) => {
+  const { bookmarked } = req.body;
+  if (typeof bookmarked !== 'boolean') {
+    return res.status(400).json({ error: 'bookmarked (boolean) is required' });
+  }
+  try {
+    const session = await toggleBookmark(req.params.id, req.params.questionIndex, bookmarked, { userId: req.userId, guestId: req.guestId });
+    res.json({ success: true, sessionId: session.id, questionIndex: Number(req.params.questionIndex), bookmarked });
+  } catch (err) {
+    if (err.message === 'Session not found') return res.status(404).json({ error: err.message });
+    logger.error('interview_bookmark_toggle_error', { message: err.message });
     res.status(500).json({ error: err.message });
   }
 });
