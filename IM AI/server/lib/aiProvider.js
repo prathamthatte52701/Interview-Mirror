@@ -295,6 +295,6 @@ ${jobDescription.slice(0, 4000)}`;
     };
   } catch (err) {
     logger.warn('ats_analysis_fallback', { message: err.message });
-    throw new Error(`ATS Analysis API error: ${err.message}`);
+    throw new Error('ATS analysis is temporarily unavailable. Please try again shortly.');
   }
 }
