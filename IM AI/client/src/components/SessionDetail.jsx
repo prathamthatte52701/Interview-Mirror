@@ -1,4 +1,5 @@
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Mic } from 'lucide-react';
+import MetricCard from './MetricCard.jsx';
 import { formatDateTime, formatLabel, sessionScore, sessionTitle } from '../lib/sessionFormat.js';
 
 function DetailRow({ label, value }) {
@@ -49,6 +50,27 @@ export default function SessionDetail({ session, transcript, transcriptLoading =
         <DetailRow label="Weaknesses" value={summary.weaknesses?.length ? summary.weaknesses.join('; ') : 'Not available'} />
         <DetailRow label="Feedback summary" value={summary.overallVerdict || summary.recommendation || 'Not available'} />
         <DetailRow label="Questions answered" value={summary.questionsAnswered ?? (transcript?.length || 'Not available')} />
+      </div>
+
+      <div className="session-question-preview">
+        <div className="feedback-card-title"><Mic size={14} /> Speaking Pace &amp; Filler Words</div>
+        {summary.deliveryMetrics ? (
+          <>
+            <div className="grid-3" style={{ marginBottom: '10px' }}>
+              <MetricCard label="Avg. WPM" value={summary.deliveryMetrics.averageWpm} />
+              <MetricCard label="Filler Words" value={summary.deliveryMetrics.fillerWordCount} />
+              <MetricCard label="Filler Rate" value={`${summary.deliveryMetrics.fillerWordRate}/100 words`} />
+            </div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              Estimated from your spoken transcript.
+            </span>
+          </>
+        ) : (
+          <div className="dashboard-empty-state history-inline-empty">
+            <Mic size={20} />
+            <strong>Not available for this session.</strong>
+          </div>
+        )}
       </div>
 
       <div className="session-question-preview">
