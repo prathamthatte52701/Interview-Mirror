@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { questionBank, personaProfiles } from './questionBank.js';
 import { analyzeAnswer, summarizeSession } from './scoring.js';
+import { computeDeliveryMetrics } from './speechMetrics.js';
 import InterviewSession from '../models/InterviewSession.js';
 import {
   hasAI,
@@ -380,6 +381,7 @@ export async function endSession(sessionId, scope) {
   }
 
   session.summary = { ...baseSummary, ...(aiNarrative || {}) };
+  session.summary.deliveryMetrics = computeDeliveryMetrics(session.transcript);
   sessionDoc.endedAt = session.endedAt;
   sessionDoc.summary = session.summary;
   await sessionDoc.save();
