@@ -492,11 +492,19 @@ export default function App() {
   async function handleAuthSuccess(user) {
     setCurrentUser(user);
     setGuestSessionEnded(false);
+
+    // Set once by the post-signup onboarding screen (AuthPage) when the user
+    // picked a domain there — consumed on the very next login since signup
+    // doesn't auto-authenticate in this app.
+    const pendingOnboardingDomain = localStorage.getItem('pending_onboarding_domain');
+    if (pendingOnboardingDomain) localStorage.removeItem('pending_onboarding_domain');
+
     setDraft((prev) => ({
       ...prev,
-      candidateName: prev.candidateName || displayNameForUser(user)
+      candidateName: prev.candidateName || displayNameForUser(user),
+      ...(pendingOnboardingDomain ? { role: pendingOnboardingDomain } : {})
     }));
-    navigate(user.isGuest ? '/setup' : '/home', { replace: true });
+    navigate(user.isGuest || pendingOnboardingDomain ? '/setup' : '/home', { replace: true });
 
     if (!user.isGuest) {
       const pendingSessionId = localStorage.getItem('pending_claim_session_id');

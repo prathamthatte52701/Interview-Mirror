@@ -6,22 +6,14 @@ import {
   Brain,
   Briefcase,
   CheckCircle,
-  Cloud,
-  Code2,
-  Cpu,
-  Database,
   FileText,
   Gauge,
-  Landmark,
   Lock,
-  Megaphone,
   MessageSquare,
-  Palette,
   PlayCircle,
   Rocket,
   Settings,
   ShieldAlert,
-  ShieldCheck,
   SlidersHorizontal,
   Smile,
   Sparkles,
@@ -30,24 +22,12 @@ import {
   UploadCloud,
   User,
   UserCheck,
-  Users,
   Zap
 } from 'lucide-react';
 import { uploadResume, analyzeATS } from '../services/api.js';
 import { useAuthStatus } from '../hooks/useAuthStatus.js';
-
-const DOMAINS = [
-  { value: 'software-engineer', label: 'Software Engineering', icon: Code2 },
-  { value: 'data-scientist', label: 'Data Science', icon: Database },
-  { value: 'product-manager', label: 'Product Manager', icon: Target },
-  { value: 'hr-general', label: 'HR & General', icon: Users },
-  { value: 'finance', label: 'Finance', icon: Landmark },
-  { value: 'devops', label: 'DevOps & Cloud', icon: Cloud },
-  { value: 'machine-learning', label: 'Machine Learning', icon: Cpu },
-  { value: 'marketing', label: 'Marketing', icon: Megaphone },
-  { value: 'cybersecurity', label: 'Cybersecurity', icon: ShieldCheck },
-  { value: 'design', label: 'Design & UX', icon: Palette }
-];
+import { DOMAINS } from '../lib/domains.js';
+import SelectCard from '../components/SelectCard.jsx';
 
 const PERSONAS = [
   {
@@ -135,42 +115,6 @@ const ACCEPTED_RESUME_EXTENSIONS = ['.txt', '.pdf', '.doc', '.docx'];
 function isAcceptedFileType(file) {
   const name = String(file?.name || '').toLowerCase();
   return ACCEPTED_RESUME_EXTENSIONS.some((ext) => name.endsWith(ext));
-}
-
-function SelectCard({
-  selected,
-  onSelect,
-  className = '',
-  style = {},
-  children,
-  ariaLabel
-}) {
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      aria-pressed={selected}
-      aria-label={ariaLabel}
-      className={className}
-      onClick={onSelect}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          onSelect();
-        }
-      }}
-      style={{
-        cursor: 'pointer',
-        userSelect: 'none',
-        WebkitUserSelect: 'none',
-        position: 'relative',
-        zIndex: 1,
-        ...style
-      }}
-    >
-      {children}
-    </div>
-  );
 }
 
 function GuestFullSessionModal({ onSignUp, onContinueQuick, onDismiss }) {

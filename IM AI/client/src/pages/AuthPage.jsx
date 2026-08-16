@@ -34,6 +34,7 @@ import {
   signUpUser
 } from '../lib/auth.js';
 import RecoveryCodeCard from '../components/RecoveryCodeCard.jsx';
+import PostSignupOnboarding from '../components/PostSignupOnboarding.jsx';
 import PasswordChecklist, { PasswordStrengthMeter } from '../components/PasswordChecklist.jsx';
 
 const FEATURE_ITEMS = [
@@ -167,6 +168,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
   const [rememberMe, setRememberMe] = useState(true);
   const [toastMessage, setToastMessage] = useState('');
   const [recoveryCodeToShow, setRecoveryCodeToShow] = useState('');
+  const [showPostSignupOnboarding, setShowPostSignupOnboarding] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [serverDown, setServerDown] = useState(false);
   const [guestBusy, setGuestBusy] = useState(false);
@@ -535,6 +537,18 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
 
   function handleContinueAfterRecoveryCode() {
     setRecoveryCodeToShow('');
+    setShowPostSignupOnboarding(true);
+  }
+
+  function handleOnboardingSelectDomain(domainValue) {
+    localStorage.setItem('pending_onboarding_domain', domainValue);
+    setShowPostSignupOnboarding(false);
+    onSwitch('login');
+  }
+
+  function handleOnboardingSkip() {
+    localStorage.removeItem('pending_onboarding_domain');
+    setShowPostSignupOnboarding(false);
     onSwitch('login');
   }
 
@@ -626,6 +640,11 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
                   onContinue={handleContinueAfterRecoveryCode}
                 />
               </div>
+            ) : showPostSignupOnboarding ? (
+              <PostSignupOnboarding
+                onSelectDomain={handleOnboardingSelectDomain}
+                onSkip={handleOnboardingSkip}
+              />
             ) : (
             <form className="auth-card" onSubmit={handleSubmit} noValidate>
               <div className="auth-card-header">
