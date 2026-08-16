@@ -1,16 +1,33 @@
 import { useMemo, useState } from 'react';
 import {
-  BarChart3, CalendarDays, Eye, EyeOff, KeyRound, Lock, LogOut,
+  BarChart3, CalendarDays, Download, Eye, EyeOff, KeyRound, Lock, LogOut,
   Mail, PlayCircle, ShieldAlert, ShieldCheck, Trash2, UserRound
 } from 'lucide-react';
 import { changePassword, deleteAccount, getPasswordPolicyStatus, logoutEverywhere, regenerateRecoveryCode } from '../lib/auth.js';
 import { useToast } from '../hooks/useToast.js';
-import { formatDateTime } from '../lib/sessionFormat.js';
+import { formatDateTime, formatLabel } from '../lib/sessionFormat.js';
 import PasswordChecklist, { PasswordStrengthMeter } from '../components/PasswordChecklist.jsx';
 import RecoveryCodeCard from '../components/RecoveryCodeCard.jsx';
 
+const REPORT_DIMENSION_LABELS = {
+  relevance: 'Relevance',
+  clarity: 'Clarity',
+  structure: 'Structure',
+  specificity: 'Specificity',
+  confidence: 'Confidence',
+  delivery: 'Delivery',
+  roleFit: 'Role Fit'
+};
+const REPORT_DIMENSION_KEYS = Object.keys(REPORT_DIMENSION_LABELS);
+
 function displayName(user) {
   return user?.username || user?.email || 'Interview Mirror User';
+}
+
+// Only sessions with a real, scored summary count as "completed" for every
+// aggregate in this file — an abandoned/unscored session has nothing to average.
+function scoredSessions(history) {
+  return history.filter((item) => Number.isFinite(item.summary?.averageMetrics?.overall));
 }
 
 function lastInterviewDate(history) {
@@ -23,12 +40,145 @@ function lastInterviewDate(history) {
 }
 
 function averageScore(history) {
-  const scores = history
-    .map((item) => item.summary?.averageMetrics?.overall)
-    .filter((score) => Number.isFinite(score));
-
+  const scores = scoredSessions(history).map((item) => item.summary.averageMetrics.overall);
   if (!scores.length) return 'Not available';
   return `${(scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1)}/10`;
+}
+
+function sanitizeFilenamePart(value) {
+  return String(value || '').replace(/[^A-Za-z0-9_-]/g, '_') || 'report';
+}
+
+function paintPage(doc) {
+  doc.setFillColor(10, 10, 10);
+  doc.rect(0, 0, 210, 297, 'F');
+}
+
+function newPage(doc) {
+  doc.addPage();
+  paintPage(doc);
+  return 28;
+}
+
+function ensureSpace(doc, y, needed = 8, limit = 280) {
+  return y + needed > limit ? newPage(doc) : y;
+}
+
+function sectionHeading(doc, text, y) {
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text(text, 20, y);
+  return y + 10;
+}
+
+function tableHeaderRow(doc, columns, y) {
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  columns.forEach(([label, x]) => doc.text(label, x, y));
+  doc.setDrawColor(90, 90, 90);
+  doc.line(20, y + 3, 190, y + 3);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(200, 200, 200);
+  return y + 9;
+}
+
+async function generateProgressReportPdf(user, history) {
+  const scored = scoredSessions(history);
+  if (!scored.length) return; // caller keeps the button disabled for this case; defensive no-op here too
+
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  paintPage(doc);
+
+  // ── Page 1 — Overview ──────────────────────────────────────────────────
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(19);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Interview Mirror AI', 20, 26);
+  doc.setFontSize(13);
+  doc.setTextColor(180, 180, 180);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Progress Report', 20, 34);
+
+  doc.setFontSize(10);
+  doc.setTextColor(150, 150, 150);
+  doc.text(`Candidate: ${user?.fullName || user?.username || 'N/A'}`, 20, 44);
+  doc.text(`Email: ${user?.email || 'N/A'}`, 20, 50);
+
+  const byDate = [...scored].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const overallScores = scored.map((item) => item.summary.averageMetrics.overall);
+  const overallAverage = overallScores.reduce((sum, score) => sum + score, 0) / overallScores.length;
+
+  const dimensionAverages = REPORT_DIMENSION_KEYS
+    .map((key) => {
+      const values = scored.map((item) => item.summary.averageMetrics[key]).filter(Number.isFinite);
+      return values.length ? { key, avg: values.reduce((sum, v) => sum + v, 0) / values.length } : null;
+    })
+    .filter(Boolean);
+
+  let y = 64;
+  y = sectionHeading(doc, 'Overview', y);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(200, 200, 200);
+  doc.text(`Total sessions completed: ${scored.length}`, 24, y); y += 7;
+  doc.text(
+    `Date range: ${new Date(byDate[0].createdAt).toLocaleDateString()} to ${new Date(byDate.at(-1).createdAt).toLocaleDateString()}`,
+    24, y
+  ); y += 7;
+  doc.text(`Overall average score: ${overallAverage.toFixed(1)}/10`, 24, y); y += 10;
+
+  if (dimensionAverages.length) {
+    const strongest = [...dimensionAverages].sort((a, b) => b.avg - a.avg)[0];
+    const weakest = [...dimensionAverages].sort((a, b) => a.avg - b.avg)[0];
+    doc.text(`Strongest area overall: ${REPORT_DIMENSION_LABELS[strongest.key]} (${strongest.avg.toFixed(1)}/10)`, 24, y); y += 7;
+    doc.text(`Weakest area overall: ${REPORT_DIMENSION_LABELS[weakest.key]} (${weakest.avg.toFixed(1)}/10)`, 24, y); y += 7;
+  }
+
+  // ── Page 2 — Per-domain breakdown ──────────────────────────────────────
+  y = newPage(doc);
+  y = sectionHeading(doc, 'Per-Domain Breakdown', y);
+
+  const byDomain = new Map();
+  scored.forEach((item) => {
+    const key = item.role || 'unknown';
+    if (!byDomain.has(key)) byDomain.set(key, []);
+    byDomain.get(key).push(item.summary.averageMetrics.overall);
+  });
+
+  y = tableHeaderRow(doc, [['Domain', 24], ['Sessions', 130], ['Avg Score', 160]], y);
+  [...byDomain.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .forEach(([domain, scores]) => {
+      y = ensureSpace(doc, y);
+      const avg = scores.reduce((sum, v) => sum + v, 0) / scores.length;
+      doc.text(formatLabel(domain), 24, y);
+      doc.text(String(scores.length), 130, y);
+      doc.text(`${avg.toFixed(1)}/10`, 160, y);
+      y += 7;
+    });
+
+  // ── Page 3+ — Session log ──────────────────────────────────────────────
+  y = newPage(doc);
+  y = sectionHeading(doc, 'Session Log', y);
+  y = tableHeaderRow(doc, [['Date', 24], ['Domain', 75], ['Difficulty', 135], ['Score', 170]], y);
+
+  [...scored]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .forEach((item) => {
+      y = ensureSpace(doc, y);
+      doc.text(new Date(item.createdAt).toLocaleDateString(), 24, y);
+      doc.text(formatLabel(item.role), 75, y);
+      doc.text(formatLabel(item.difficulty), 135, y);
+      doc.text(`${item.summary.averageMetrics.overall.toFixed(1)}/10`, 170, y);
+      y += 7;
+    });
+
+  const filenameCandidate = sanitizeFilenamePart(user?.username || user?.fullName || 'user');
+  const filenameDate = sanitizeFilenamePart(new Date().toLocaleDateString());
+  doc.save(`InterviewMirrorAI_ProgressReport_${filenameCandidate}_${filenameDate}.pdf`);
 }
 
 function ChangePasswordSection() {
@@ -325,9 +475,24 @@ function DeleteAccountSection({ user, onLogout }) {
 }
 
 export default function ProfilePage({ user, history = [], onLogout, onStart }) {
+  const { showToast } = useToast();
   const primaryName = displayName(user);
   const initial = primaryName?.[0]?.toUpperCase() || 'I';
   const since = user?.createdAt ? formatDateTime(user.createdAt) : null;
+  const [reportBusy, setReportBusy] = useState(false);
+  const hasCompletedSessions = scoredSessions(history).length > 0;
+
+  async function handleDownloadReport() {
+    if (!hasCompletedSessions || reportBusy) return;
+    setReportBusy(true);
+    try {
+      await generateProgressReportPdf(user, history);
+    } catch (err) {
+      showToast(err?.message || 'Failed to generate progress report.', 'error');
+    } finally {
+      setReportBusy(false);
+    }
+  }
 
   return (
     <div className="profile-page anim-fade-up">
@@ -371,6 +536,30 @@ export default function ProfilePage({ user, history = [], onLogout, onStart }) {
             <strong>{averageScore(history)}</strong>
           </div>
         </section>
+
+        {!user?.isGuest && (
+          <section className="profile-actions-card">
+            <div>
+              <h3>Progress report</h3>
+              <p>
+                {hasCompletedSessions
+                  ? 'Download a PDF covering your entire interview history — overview, per-domain breakdown, and a full session log.'
+                  : 'Complete your first interview to unlock this.'}
+              </p>
+            </div>
+            <div className="profile-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleDownloadReport}
+                disabled={!hasCompletedSessions || reportBusy}
+                title={hasCompletedSessions ? undefined : 'Complete your first interview to unlock this.'}
+              >
+                {reportBusy ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <><Download size={16} /> Download Progress Report</>}
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="profile-actions-card">
           <div>
