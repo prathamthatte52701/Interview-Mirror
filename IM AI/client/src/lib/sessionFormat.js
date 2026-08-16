@@ -7,7 +7,16 @@ export function formatDateTime(value) {
   if (!value) return 'Not available';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Not available';
-  return date.toLocaleString();
+  const formatted = date.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).replace(/\b(am|pm)\b/i, (m) => m.toUpperCase());
+  return `${formatted} IST`;
 }
 
 export function sessionScore(item) {

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { changePassword, deleteAccount, getPasswordPolicyStatus, logoutEverywhere, regenerateRecoveryCode } from '../lib/auth.js';
 import { useToast } from '../hooks/useToast.js';
+import { formatDateTime } from '../lib/sessionFormat.js';
 import PasswordChecklist, { PasswordStrengthMeter } from '../components/PasswordChecklist.jsx';
 import RecoveryCodeCard from '../components/RecoveryCodeCard.jsx';
 
@@ -13,12 +14,12 @@ function displayName(user) {
 }
 
 function lastInterviewDate(history) {
-  const dates = history
-    .map((item) => new Date(item.createdAt))
-    .filter((date) => !Number.isNaN(date.getTime()))
-    .sort((a, b) => b - a);
+  const sorted = history
+    .map((item) => item.createdAt)
+    .filter(Boolean)
+    .sort((a, b) => new Date(b) - new Date(a));
 
-  return dates[0] ? dates[0].toLocaleString() : 'Not available';
+  return formatDateTime(sorted[0]);
 }
 
 function averageScore(history) {
@@ -28,12 +29,6 @@ function averageScore(history) {
 
   if (!scores.length) return 'Not available';
   return `${(scores.reduce((sum, score) => sum + score, 0) / scores.length).toFixed(1)}/10`;
-}
-
-function memberSince(value) {
-  const date = new Date(value);
-  if (!value || Number.isNaN(date.getTime())) return null;
-  return date.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 function ChangePasswordSection() {
@@ -332,7 +327,7 @@ function DeleteAccountSection({ user, onLogout }) {
 export default function ProfilePage({ user, history = [], onLogout, onStart }) {
   const primaryName = displayName(user);
   const initial = primaryName?.[0]?.toUpperCase() || 'I';
-  const since = memberSince(user?.createdAt);
+  const since = user?.createdAt ? formatDateTime(user.createdAt) : null;
 
   return (
     <div className="profile-page anim-fade-up">
