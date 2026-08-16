@@ -235,6 +235,23 @@ export default function DashboardPage({ session, summary, history = [], loading 
         exportWeaknesses.forEach(w => { doc.text(`• ${w}`, 24, y); y += 7; });
       }
 
+      const exportDelivery = exportSummary?.deliveryMetrics;
+      if (exportDelivery) {
+        y += 5;
+        doc.setTextColor(255,255,255);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Speaking Pace & Filler Words (Estimated)', 20, y);
+        y += 8;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(180,180,180);
+        doc.text(`Average pace: ${exportDelivery.averageWpm} WPM`, 24, y);
+        y += 7;
+        doc.text(`Filler words: ${exportDelivery.fillerWordCount} (${exportDelivery.fillerWordRate}/100 words)`, 24, y);
+        y += 7;
+      }
+
       if (exportVerdict) {
         y += 8;
         doc.setTextColor(255,255,255);
