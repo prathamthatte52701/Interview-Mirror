@@ -169,6 +169,76 @@ export async function generateSessionSummaryWithAI({ transcript, role, candidate
   }
 }
 
+// ─── Resume Consistency Check ─────────────────────────────────────────────────
+export async function analyzeResumeConsistency(resumeText, transcript) {
+  if (!ai) return null;
+  if (!resumeText) return null;
+  if (!Array.isArray(transcript) || transcript.length === 0) return null;
+
+  const systemInstruction = `You are a careful, conservative fact-checker reviewing an interview transcript against a candidate's resume — framed as a constructive self-review tool for the candidate, not an accusation.
+
+Only flag CLEAR, DIRECT factual contradictions between a specific resume claim and a specific answer. Do NOT flag:
+- Omissions (the answer simply didn't mention something the resume says)
+- Different framing or emphasis of the same fact
+- An answer that focuses on a narrower aspect of a broader resume claim
+
+Every flag MUST include a self-reported confidence score (0-100). Only include a flag if confidence is 90 or above. If there is ANY reasonable alternative explanation for the difference — the candidate could be describing a different time period, a different project, a partial view of a larger claim, etc. — it is NOT a confirmed contradiction and must not be included, regardless of how it initially looks.
+
+It is correct and expected to return zero flags most of the time. Do not manufacture a flag to have something to report.
+
+Return at most 3 flags, only ones meeting the 90+ confidence bar. Return fewer (including zero) rather than pad the list with weak ones.
+
+Return ONLY valid JSON with this exact schema:
+{
+  "flags": [
+    {
+      "questionIndex": <index of the question this relates to>,
+      "resumeLine": "<exact quoted line from the resume>",
+      "answerExcerpt": "<exact quoted excerpt from the candidate's answer>",
+      "confidence": <0-100>,
+      "explanation": "<short plain-language explanation of the contradiction>"
+    }
+  ]
+}`;
+
+  const qa = transcript.map((t, i) =>
+    `Q${i}: ${t.question}\nA: ${(t.answer || '').slice(0, 500)}`
+  ).join('\n\n');
+
+  const prompt = `Resume:\n${resumeText.slice(0, 6000)}\n\nInterview transcript:\n${qa}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+        temperature: 0.1
+      }
+    });
+
+    const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    const rawFlags = Array.isArray(parsed.flags) ? parsed.flags : [];
+    return rawFlags
+      .filter((flag) => Number(flag?.confidence) >= 90 && flag?.resumeLine && flag?.answerExcerpt)
+      .slice(0, 3)
+      .map((flag) => ({
+        questionIndex: flag.questionIndex ?? null,
+        resumeLine: flag.resumeLine,
+        answerExcerpt: flag.answerExcerpt,
+        confidence: Number(flag.confidence),
+        explanation: flag.explanation || ''
+      }));
+  } catch (err) {
+    logger.warn('ai_fallback', { fn: 'analyzeResumeConsistency', message: err.message });
+    return null;
+  }
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const FILLERS = ['um', 'uh', 'like', 'basically', 'actually', 'you know', 'sort of', 'kind of'];
 function countFillers(text) {

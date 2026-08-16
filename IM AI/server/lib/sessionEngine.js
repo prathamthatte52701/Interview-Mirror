@@ -8,7 +8,8 @@ import {
   generateAnalysisWithAI,
   generateFollowUpWithAI,
   generateDynamicQuestion,
-  generateSessionSummaryWithAI
+  generateSessionSummaryWithAI,
+  analyzeResumeConsistency
 } from './aiProvider.js';
 
 function buildScopeFilter({ userId, guestId }) {
@@ -382,6 +383,7 @@ export async function endSession(sessionId, scope) {
 
   session.summary = { ...baseSummary, ...(aiNarrative || {}) };
   session.summary.deliveryMetrics = computeDeliveryMetrics(session.transcript);
+  session.summary.resumeConsistencyFlags = await analyzeResumeConsistency(session.resumeText, session.transcript);
   sessionDoc.endedAt = session.endedAt;
   sessionDoc.summary = session.summary;
   await sessionDoc.save();
