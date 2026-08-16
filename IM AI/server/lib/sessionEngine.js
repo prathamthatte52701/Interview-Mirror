@@ -384,6 +384,35 @@ export async function answerQuestion(sessionId, answer, meta = {}) {
   };
 }
 
+// ─── Score Deltas (vs. last time in the same domain) ────────────────────────────
+const SCORE_DIMENSION_KEYS = ['relevance', 'clarity', 'structure', 'specificity', 'confidence', 'delivery', 'roleFit'];
+
+async function findPreviousSameDomainSession(session, scope) {
+  const previous = await InterviewSession.findOne({
+    ...buildScopeFilter(scope),
+    role: session.role,
+    id: { $ne: session.id },
+    endedAt: { $ne: null }
+  }).sort({ createdAt: -1 });
+  return previous ? serializeSession(previous) : null;
+}
+
+function computeScoreDeltas(currentMetrics, previousMetrics) {
+  if (!currentMetrics || !previousMetrics) return null;
+
+  const deltas = {};
+  let hasAny = false;
+  SCORE_DIMENSION_KEYS.forEach((key) => {
+    const curr = currentMetrics[key];
+    const prev = previousMetrics[key];
+    if (Number.isFinite(curr) && Number.isFinite(prev)) {
+      deltas[key] = +(curr - prev).toFixed(1);
+      hasAny = true;
+    }
+  });
+  return hasAny ? deltas : null;
+}
+
 // ─── End Session ───────────────────────────────────────────────────────────────
 export async function endSession(sessionId, scope) {
   const sessionDoc = await InterviewSession.findOne({ id: sessionId, ...buildScopeFilter(scope) });
@@ -406,6 +435,13 @@ export async function endSession(sessionId, scope) {
   session.summary = { ...baseSummary, ...(aiNarrative || {}) };
   session.summary.deliveryMetrics = computeDeliveryMetrics(session.transcript);
   session.summary.resumeConsistencyFlags = await analyzeResumeConsistency(session.resumeText, session.transcript);
+
+  const previousSameDomain = await findPreviousSameDomainSession(session, scope);
+  session.summary.scoreDeltas = computeScoreDeltas(
+    session.summary.averageMetrics,
+    previousSameDomain?.summary?.averageMetrics
+  );
+
   sessionDoc.endedAt = session.endedAt;
   sessionDoc.summary = session.summary;
   await sessionDoc.save();
