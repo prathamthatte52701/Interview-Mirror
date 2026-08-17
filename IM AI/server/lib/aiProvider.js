@@ -1,19 +1,26 @@
 import { GoogleGenAI } from '@google/genai';
 import './env.js';
 import logger from './logger.js';
+import { groqChat, hasGroqPool } from './groqProvider.js';
 
 const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
+// True if Gemini is configured OR at least one Groq fallback pool has a key —
+// callers use this to decide whether to attempt an AI call at all before
+// falling back to the heuristic path. The actual Gemini-then-Groq ordering
+// happens inside each function below.
 export function hasAI() {
-  return !!ai;
+  return !!ai || hasGroqPool('questions') || hasGroqPool('analysis') || hasGroqPool('docs');
+}
+
+function stripJsonFence(text) {
+  return String(text || '{}').replace(/```json/g, '').replace(/```/g, '').trim();
 }
 
 // ─── Dynamic Question Generation ──────────────────────────────────────────────
 export async function generateDynamicQuestion({ role, difficulty, resumeText, jdText, askedQuestions = [], persona }) {
-  if (!ai) return null;
-
   const context = [];
   if (resumeText) context.push(`Candidate resume:\n${resumeText.slice(0, 800)}`);
   if (jdText) context.push(`Job description:\n${jdText.slice(0, 600)}`);
@@ -32,23 +39,25 @@ Generate ONE unique interview question that:
 
 Return ONLY the question text, nothing else. No quotes, no numbering.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { temperature: 0.85 }
-    });
-    return (response.text || '').trim();
-  } catch (err) {
-    logger.warn('ai_fallback', { fn: 'generateDynamicQuestion', message: err.message });
-    return null;
+  if (ai) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { temperature: 0.85 }
+      });
+      return (response.text || '').trim();
+    } catch (err) {
+      logger.warn('ai_fallback', { fn: 'generateDynamicQuestion', message: err.message });
+    }
   }
+
+  const groqText = await groqChat('questions', { prompt, temperature: 0.85 });
+  return groqText ? groqText.trim() : null;
 }
 
 // ─── Answer Analysis ───────────────────────────────────────────────────────────
 export async function generateAnalysisWithAI({ answer, question, role, rubric, presenceSnapshot }) {
-  if (!ai) return null;
-
   const presenceContext = presenceSnapshot
     ? `Non-verbal presence data: Eye contact ${presenceSnapshot.eyeContact}%, Posture ${presenceSnapshot.posture}%, Attention ${presenceSnapshot.attention}%.`
     : '';
@@ -85,21 +94,7 @@ Return ONLY valid JSON with this exact schema:
 Candidate Answer: "${answer}"
 Expected points: ${JSON.stringify(rubric?.expectedPoints || [])}`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        temperature: 0.3
-      }
-    });
-
-    const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const result = JSON.parse(clean);
-
+  function shape(result) {
     return {
       fillerCount: countFillers(answer),
       wordCount: (answer || '').split(/\s+/).filter(Boolean).length,
@@ -107,41 +102,66 @@ Expected points: ${JSON.stringify(rubric?.expectedPoints || [])}`;
       missingPoints: [],
       ...result
     };
+  }
+
+  if (ai) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          temperature: 0.3
+        }
+      });
+
+      const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      return shape(JSON.parse(stripJsonFence(text)));
+    } catch (err) {
+      logger.warn('ai_fallback', { fn: 'generateAnalysisWithAI', message: err.message });
+    }
+  }
+
+  try {
+    const groqText = await groqChat('analysis', { system: systemInstruction, prompt, json: true, temperature: 0.3 });
+    if (!groqText) return null;
+    return shape(JSON.parse(stripJsonFence(groqText)));
   } catch (err) {
-    logger.warn('ai_fallback', { fn: 'generateAnalysisWithAI', message: err.message });
+    logger.warn('ai_fallback', { fn: 'generateAnalysisWithAI', provider: 'groq', message: err.message });
     return null;
   }
 }
 
 // ─── Follow-up Generation ──────────────────────────────────────────────────────
 export async function generateFollowUpWithAI({ answer, analysis, persona, previousQuestion }) {
-  if (!ai) return null;
-
   const prompt = `You are a ${persona} interviewer.
 The candidate just answered: "${previousQuestion}"
 Their answer: "${answer}"
 Weaknesses noted: ${(analysis?.weaknesses || []).join(', ')}
 
-Generate ONE short, natural follow-up question (1-2 sentences max) to probe deeper or clarify a weakness. 
+Generate ONE short, natural follow-up question (1-2 sentences max) to probe deeper or clarify a weakness.
 Return ONLY the follow-up question. No quotes, no preamble.`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { temperature: 0.75 }
-    });
-    return (response.text || '').trim();
-  } catch (err) {
-    logger.warn('ai_fallback', { fn: 'generateFollowUpWithAI', message: err.message });
-    return null;
+  if (ai) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { temperature: 0.75 }
+      });
+      return (response.text || '').trim();
+    } catch (err) {
+      logger.warn('ai_fallback', { fn: 'generateFollowUpWithAI', message: err.message });
+    }
   }
+
+  const groqText = await groqChat('questions', { prompt, temperature: 0.75 });
+  return groqText ? groqText.trim() : null;
 }
 
 // ─── Session Summary ───────────────────────────────────────────────────────────
 export async function generateSessionSummaryWithAI({ transcript, role, candidateName }) {
-  if (!ai) return null;
-
   const qa = transcript.slice(0, 8).map((t, i) =>
     `Q${i + 1}: ${t.question}\nA: ${t.answer?.slice(0, 200)}`
   ).join('\n\n');
@@ -155,23 +175,30 @@ export async function generateSessionSummaryWithAI({ transcript, role, candidate
   "coachingPlan": ["<actionable step>", "<actionable step>", "<actionable step>"]
 }`;
 
+  if (ai) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { responseMimeType: 'application/json', temperature: 0.4 }
+      });
+      return JSON.parse(stripJsonFence(response.text || '{}'));
+    } catch (err) {
+      logger.warn('ai_fallback', { fn: 'generateSessionSummaryWithAI', message: err.message });
+    }
+  }
+
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { responseMimeType: 'application/json', temperature: 0.4 }
-    });
-    const text = response.text || '{}';
-    return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+    const groqText = await groqChat('analysis', { prompt, json: true, temperature: 0.4 });
+    return groqText ? JSON.parse(stripJsonFence(groqText)) : null;
   } catch (err) {
-    logger.warn('ai_fallback', { fn: 'generateSessionSummaryWithAI', message: err.message });
+    logger.warn('ai_fallback', { fn: 'generateSessionSummaryWithAI', provider: 'groq', message: err.message });
     return null;
   }
 }
 
 // ─── Resume Consistency Check ─────────────────────────────────────────────────
 export async function analyzeResumeConsistency(resumeText, transcript) {
-  if (!ai) return null;
   if (!resumeText) return null;
   if (!Array.isArray(transcript) || transcript.length === 0) return null;
 
@@ -207,21 +234,7 @@ Return ONLY valid JSON with this exact schema:
 
   const prompt = `Resume:\n${resumeText.slice(0, 6000)}\n\nInterview transcript:\n${qa}`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        temperature: 0.1
-      }
-    });
-
-    const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(clean);
-
+  function shape(parsed) {
     const rawFlags = Array.isArray(parsed.flags) ? parsed.flags : [];
     return rawFlags
       .filter((flag) => Number(flag?.confidence) >= 90 && flag?.resumeLine && flag?.answerExcerpt)
@@ -233,8 +246,32 @@ Return ONLY valid JSON with this exact schema:
         confidence: Number(flag.confidence),
         explanation: flag.explanation || ''
       }));
+  }
+
+  if (ai) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          temperature: 0.1
+        }
+      });
+
+      const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      return shape(JSON.parse(stripJsonFence(text)));
+    } catch (err) {
+      logger.warn('ai_fallback', { fn: 'analyzeResumeConsistency', message: err.message });
+    }
+  }
+
+  try {
+    const groqText = await groqChat('docs', { system: systemInstruction, prompt, json: true, temperature: 0.1 });
+    return groqText ? shape(JSON.parse(stripJsonFence(groqText))) : null;
   } catch (err) {
-    logger.warn('ai_fallback', { fn: 'analyzeResumeConsistency', message: err.message });
+    logger.warn('ai_fallback', { fn: 'analyzeResumeConsistency', provider: 'groq', message: err.message });
     return null;
   }
 }
@@ -251,10 +288,6 @@ function countFillers(text) {
 
 // ─── ATS Analysis ─────────────────────────────────────────────────────────────
 export async function generateATSAnalysis({ resumeText, jobDescription }) {
-  if (!ai) {
-    throw new Error('AI provider is not configured on the server.');
-  }
-
   const systemInstruction = `You are a professional Applicant Tracking System (ATS) optimization engine.
 Analyze the candidate's resume and job description. Evaluate the compatibility score, keyword match percentage, missing keywords, and recommendations.
 
@@ -272,29 +305,40 @@ ${resumeText.slice(0, 6000)}
 Job description:
 ${jobDescription.slice(0, 4000)}`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        temperature: 0.2
-      }
-    });
-
-    const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const parsed = JSON.parse(clean);
-
+  function shape(parsed) {
     return {
       score: typeof parsed.score === 'number' ? parsed.score : 50,
       keywordMatch: typeof parsed.keywordMatch === 'number' ? parsed.keywordMatch : 50,
       missingKeywords: Array.isArray(parsed.missingKeywords) ? parsed.missingKeywords : [],
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : []
     };
+  }
+
+  if (ai) {
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          temperature: 0.2
+        }
+      });
+
+      const text = response.text || response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      return shape(JSON.parse(stripJsonFence(text)));
+    } catch (err) {
+      logger.warn('ats_analysis_fallback', { message: err.message });
+    }
+  }
+
+  try {
+    const groqText = await groqChat('docs', { system: systemInstruction, prompt, json: true, temperature: 0.2 });
+    if (!groqText) throw new Error('No Groq fallback keys configured.');
+    return shape(JSON.parse(stripJsonFence(groqText)));
   } catch (err) {
-    logger.warn('ats_analysis_fallback', { message: err.message });
+    logger.warn('ats_analysis_fallback', { provider: 'groq', message: err.message });
     throw new Error('ATS analysis is temporarily unavailable. Please try again shortly.');
   }
 }

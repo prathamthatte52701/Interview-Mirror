@@ -1,0 +1,13 @@
+{
+  "name": "interview-mirror-ai-root",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "install": "npm --prefix \"IM AI\" install",
+    "postinstall": "echo done",
+    "dev": "npm --prefix \"IM AI\" run dev",
+    "build": "npm --prefix \"IM AI\" run build",
+    "start": "npm --prefix \"IM AI\" run start",
+    "test": "npm --prefix \"IM AI/server\" test"
+  }
+}
