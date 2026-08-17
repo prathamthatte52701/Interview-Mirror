@@ -2,7 +2,9 @@ import Groq from 'groq-sdk';
 import './env.js';
 import logger from './logger.js';
 
-const MODEL = 'llama-3.3-70b-versatile';
+// llama-3.3-70b-versatile was retired from Groq's lineup; verified against
+// the live /v1/models list before picking this replacement.
+const MODEL = 'openai/gpt-oss-120b';
 
 function loadKeys() {
   const raw = process.env.GROQ_API_KEYS || '';
@@ -15,9 +17,9 @@ const ALL_KEYS = loadKeys();
 // one kind of call (e.g. answer analysis) doesn't starve a different kind
 // (e.g. question generation) of its own fallback capacity.
 const POOLS = {
-  questions: ALL_KEYS.slice(0, 2), // generateDynamicQuestion, generateFollowUpWithAI
-  analysis: ALL_KEYS.slice(2, 5), // generateAnalysisWithAI, generateSessionSummaryWithAI
-  docs: ALL_KEYS.slice(5, 7) // analyzeResumeConsistency, generateATSAnalysis
+  questions: ALL_KEYS.slice(0, 3), // generateDynamicQuestion, generateFollowUpWithAI
+  analysis: ALL_KEYS.slice(3, 7), // generateAnalysisWithAI, generateSessionSummaryWithAI
+  docs: ALL_KEYS.slice(7, 10) // analyzeResumeConsistency, generateATSAnalysis
 };
 
 const clients = new Map();
