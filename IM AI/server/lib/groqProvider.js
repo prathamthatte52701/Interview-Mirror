@@ -18,8 +18,8 @@ const ALL_KEYS = loadKeys();
 // (e.g. question generation) of its own fallback capacity.
 const POOLS = {
   questions: ALL_KEYS.slice(0, 3), // generateDynamicQuestion, generateFollowUpWithAI
-  analysis: ALL_KEYS.slice(3, 7), // generateAnalysisWithAI, generateSessionSummaryWithAI
-  docs: ALL_KEYS.slice(7, 10) // analyzeResumeConsistency, generateATSAnalysis
+  analysis: ALL_KEYS.slice(3, 6), // generateAnalysisWithAI, generateSessionSummaryWithAI
+  docs: ALL_KEYS.slice(6, 9) // analyzeResumeConsistency, generateATSAnalysis
 };
 
 const clients = new Map();
