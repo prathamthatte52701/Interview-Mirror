@@ -16,10 +16,11 @@ const ALL_KEYS = loadKeys();
 // Role pools — each pool gets its own slice of keys so a burst of traffic on
 // one kind of call (e.g. answer analysis) doesn't starve a different kind
 // (e.g. question generation) of its own fallback capacity.
+// 13 keys total, 12 active (4/4/4) — the 13th sits unused as a spare.
 const POOLS = {
-  questions: ALL_KEYS.slice(0, 3), // generateDynamicQuestion, generateFollowUpWithAI
-  analysis: ALL_KEYS.slice(3, 6), // generateAnalysisWithAI, generateSessionSummaryWithAI
-  docs: ALL_KEYS.slice(6, 9) // analyzeResumeConsistency, generateATSAnalysis
+  questions: ALL_KEYS.slice(0, 4), // generateDynamicQuestion, generateFollowUpWithAI
+  analysis: ALL_KEYS.slice(4, 8), // generateAnalysisWithAI, generateSessionSummaryWithAI
+  docs: ALL_KEYS.slice(8, 12) // analyzeResumeConsistency, generateATSAnalysis
 };
 
 const clients = new Map();
