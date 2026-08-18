@@ -522,6 +522,12 @@
   font-family: inherit;
 }
 
+/* Password fields carry a trailing show/hide button (36px, right:10px) —
+   give typed text room so it never runs under it. */
+.auth-input-shell:has(.auth-password-toggle) input {
+  padding-right: 48px;
+}
+
 .auth-input-shell select {
   appearance: none;
   cursor: pointer;
@@ -605,19 +611,36 @@
 /* Password visibility toggle */
 .auth-password-toggle {
   position: absolute;
-  right: 16px;
+  right: 10px;
+  /* A global "keep interactive controls clickable" rule gives every plain
+     <input> z-index:5 (see global.css), which sat above this button's old
+     unset z-index and silently ate every click meant for the icon — the
+     click landed on the password input underneath instead. z-index:6 here
+     wins that stack explicitly. Size bumped from 24px to a real 36px
+     hit-area (icon itself stays 18px, centered) so it's comfortably
+     clickable, not just the glyph's own pixels. */
+  z-index: 6;
   display: inline-grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 36px;
+  height: 36px;
   border: 0;
+  border-radius: 8px;
   color: rgba(255, 255, 255, 0.55);
   background: transparent;
   cursor: pointer;
-  transition: opacity 150ms ease;
+  transition: color 150ms ease, background-color 150ms ease;
 }
 
-.auth-password-toggle:hover { opacity: 1; color: var(--auth-text); }
+.auth-password-toggle:hover {
+  color: var(--auth-text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-password-toggle:focus-visible {
+  outline: 2px solid var(--auth-secondary);
+  outline-offset: 1px;
+}
 
 /* ─── Password requirement checklist ─── */
 .auth-password-rules {
