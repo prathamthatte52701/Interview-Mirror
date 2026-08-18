@@ -753,7 +753,7 @@ export default function App() {
             <span className="nav-icon">{icons.interview}</span>
             Interview
             {isInInterview && (
-              <span className="badge badge-live" style={{ marginLeft: 'auto', padding: '1px 6px', fontSize: '0.62rem' }}>
+              <span className="badge badge-live" style={{ marginLeft: 'auto', padding: '1px 6px', fontSize: '10px' }}>
                 LIVE
               </span>
             )}
