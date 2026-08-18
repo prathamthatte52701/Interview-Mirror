@@ -279,26 +279,28 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
         errors.confirmPassword = 'Passwords do not match.';
       }
 
-      if (!cleanContact) {
-        errors.contactNumber = 'Contact number is required.';
-      } else if (!INDIAN_PHONE_REGEX.test(cleanContact)) {
-        errors.contactNumber = 'Contact number must be a valid 10-digit Indian mobile number.';
-      }
-
-      if (address && !/^[A-Za-z0-9 ,.\-]*$/.test(address)) {
-        errors.address = 'Address can only contain English letters, numbers, spaces, commas, dots, and hyphens.';
-      } else if (addressWordCount > 50) {
-        errors.address = 'Address can be maximum 50 words.';
-      } else if (hasLongAddressWord(address)) {
-        errors.address = 'Each address word can be maximum 14 characters.';
-      }
-
-      const allowedCityNames = cityOptions.map((item) => (
-        typeof item === 'string' ? item : item?.name
-      )).filter(Boolean);
-      if (city && !allowedCityNames.includes(city)) {
-        errors.city = 'Select a valid city.';
-      }
+      // Commented out — signup form was too long, re-enable if these fields are needed later.
+      // Contact number / city / address validation (fields hidden above).
+      // if (!cleanContact) {
+      //   errors.contactNumber = 'Contact number is required.';
+      // } else if (!INDIAN_PHONE_REGEX.test(cleanContact)) {
+      //   errors.contactNumber = 'Contact number must be a valid 10-digit Indian mobile number.';
+      // }
+      //
+      // if (address && !/^[A-Za-z0-9 ,.\-]*$/.test(address)) {
+      //   errors.address = 'Address can only contain English letters, numbers, spaces, commas, dots, and hyphens.';
+      // } else if (addressWordCount > 50) {
+      //   errors.address = 'Address can be maximum 50 words.';
+      // } else if (hasLongAddressWord(address)) {
+      //   errors.address = 'Each address word can be maximum 14 characters.';
+      // }
+      //
+      // const allowedCityNames = cityOptions.map((item) => (
+      //   typeof item === 'string' ? item : item?.name
+      // )).filter(Boolean);
+      // if (city && !allowedCityNames.includes(city)) {
+      //   errors.city = 'Select a valid city.';
+      // }
     }
 
     setFieldErrors(errors);
@@ -750,6 +752,8 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
                 />
               )}
 
+              {/* Commented out — signup form was too long, re-enable if these fields are needed later.
+                  Contact number / City / Address (AuthField + city-suggestion combobox).
               {isSignup && (
                 <>
                   <AuthField
@@ -812,6 +816,7 @@ export default function AuthPage({ mode = 'login', onAuthSuccess, onSwitch, onNa
                   </div>
                 </>
               )}
+              */}
 
               {!isSignup && (
                 <div className="auth-remember-row">

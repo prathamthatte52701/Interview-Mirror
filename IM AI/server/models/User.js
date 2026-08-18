@@ -11,7 +11,8 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, trim: true, lowercase: true },
   passwordHash: { type: String, required: true },
   address: { type: String, default: '', trim: true },
-  contactNumber: { type: String, required: NOT_ADMIN, trim: true },
+  // No longer required — the signup UI field was hidden (too many fields on the form).
+  contactNumber: { type: String, default: '', trim: true },
   city: { type: String, default: '', trim: true },
   accountType: { type: String, default: 'Prototype User' },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },

@@ -106,8 +106,9 @@ async function validateSignup(body) {
   const pwdError = passwordPolicyError(body.password);
   if (pwdError) return { message: pwdError };
 
-  if (!contactNumber) return { message: 'Contact number is required.' };
-  if (!/^[6-9]\d{9}$/.test(contactNumber)) return { message: 'Contact number must be a valid 10-digit Indian mobile number.' };
+  // Contact number is optional now — the signup UI field was hidden (too many
+  // fields on the form). Still validated for format if the caller does send one.
+  if (contactNumber && !/^[6-9]\d{9}$/.test(contactNumber)) return { message: 'Contact number must be a valid 10-digit Indian mobile number.' };
   if (address && !/^[A-Za-z0-9 ,.\-]+$/.test(address)) return { message: 'Address can only contain English letters, numbers, spaces, commas, dots, and hyphens.' };
   if (addressWordCount(address) > 50) return { message: 'Address can be maximum 50 words.' };
   if (hasLongAddressWord(address)) return { message: 'Each address word can be maximum 14 characters.' };

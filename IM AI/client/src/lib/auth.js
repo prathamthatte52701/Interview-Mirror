@@ -162,8 +162,9 @@ export async function signUpUser({ fullName, username, email, password, contactN
 
   const passwordPolicyError = getPasswordPolicyError(password);
   if (passwordPolicyError) throw new Error(passwordPolicyError);
-  if (!cleanContact) throw new Error('Contact number is required.');
-  if (!/^[6-9]\d{9}$/.test(cleanContact)) throw new Error('Contact number must be a valid 10-digit Indian mobile number.');
+  // Contact number is no longer required — the signup UI field was hidden
+  // (too many fields on the form). Still validated for format if present.
+  if (cleanContact && !/^[6-9]\d{9}$/.test(cleanContact)) throw new Error('Contact number must be a valid 10-digit Indian mobile number.');
   if (countWords(address) > 50) throw new Error('Address can be maximum 50 words.');
   if (hasLongAddressWord(address)) throw new Error('Each address word can be maximum 14 characters.');
   const allowedCityNames = cityOptions.map((item) => (
